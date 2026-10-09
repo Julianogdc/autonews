@@ -1,4 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+
+// Redirecionamento com caminho relativo: não depende do endereço interno do servidor.
+function redirectTo(path: string, status = 303) {
+  return new NextResponse(null, { status, headers: { Location: path } });
+}
 import { prisma } from '@/lib/db';
 import {
   SESSION_COOKIE,
@@ -17,14 +22,14 @@ export async function POST(req: NextRequest) {
 
   if (!user || !ok) {
     // Mensagem genérica: não revela se o e-mail existe.
-    return NextResponse.redirect(new URL('/login?erro=1', req.url), 303);
+    return redirectTo('/login?erro=1');
   }
 
   await prisma.auditLog.create({
     data: { userId: user.id, action: 'login' },
   });
 
-  const res = NextResponse.redirect(new URL('/', req.url), 303);
+  const res = redirectTo('/');
   res.cookies.set(SESSION_COOKIE, createSessionToken(user.id), sessionCookieOptions);
   return res;
 }

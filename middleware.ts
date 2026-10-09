@@ -11,9 +11,7 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
   if (!req.cookies.get('autonews_session')) {
-    const url = req.nextUrl.clone();
-    url.pathname = '/login';
-    return NextResponse.redirect(url);
+    return new NextResponse(null, { status: 307, headers: { Location: '/login' } });
   }
   return NextResponse.next();
 }

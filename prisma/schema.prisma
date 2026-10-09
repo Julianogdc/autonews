@@ -40,3 +40,20 @@ model AuditLog {
 
   @@index([createdAt])
 }
+
+// Matéria detectada em um portal. A URL é única: a mesma matéria nunca entra duas vezes.
+model Article {
+  id          String    @id @default(cuid())
+  sourceKey   String    // ex.: "campograndenews"
+  url         String    @unique
+  title       String
+  publishedAt DateTime?
+  author      String?
+  category    String?
+  imageUrl    String?   // só referência; a imagem nunca é armazenada
+  imageCredit String?
+  text        String?   // texto extraído; apagado após 30 dias (textPurgeAt)
+  textPurgeAt DateTime?
+  detectedAt  DateTime  @default(now())
+  status      String    @default("NOVA")
+}

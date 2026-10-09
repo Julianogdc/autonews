@@ -1,8 +1,7 @@
 import { prisma } from '../db';
-import { listCandidates } from './campograndenews';
 import { fetchArticle } from './article';
+import type { Candidate } from './listing';
 
-const SOURCE = 'campograndenews';
 const MAX_NEW_PER_CYCLE = 20;   // limita o trabalho por rodada
 const RETENTION_DAYS = 30;      // texto extraído é apagado após 30 dias
 const MAX_AGE_HOURS = 48;       // matérias mais antigas são só registradas, sem texto
@@ -10,8 +9,7 @@ const MAX_AGE_HOURS = 48;       // matérias mais antigas são só registradas, 
 export type CycleResult = { candidates: number; alreadyKnown: number; saved: number; failed: number };
 
 // Descobre matérias novas e salva apenas as que ainda não existem no banco.
-export async function runCampoGrandeNews(): Promise<CycleResult> {
-  const candidates = await listCandidates();
+export async function runSource(source: string, candidates: Candidate[]): Promise<CycleResult> {
   const urls = candidates.map((c) => c.url);
 
   const known = await prisma.article.findMany({
@@ -30,11 +28,13 @@ export async function runCampoGrandeNews(): Promise<CycleResult> {
 
       // Matéria com mais de 48h: registra a URL (para não reler) mas não guarda texto.
       const published = a.publishedAt ? new Date(a.publishedAt) : null;
-      const tooOld = !published || Date.now() - published.getTime() > MAX_AGE_HOURS * 3600000;
+      const noDate = !published;
+      const tooOld = !!published && Date.now() - published.getTime() > MAX_AGE_HOURS * 3600000;
+      const skipText = a.isPaid || tooOld;
 
       await prisma.article.create({
         data: {
-          sourceKey: SOURCE,
+          sourceKey: source,
           url: a.url,
           title: a.title,
           publishedAt: a.publishedAt ? new Date(a.publishedAt) : null,
@@ -42,9 +42,9 @@ export async function runCampoGrandeNews(): Promise<CycleResult> {
           category: a.category,
           imageUrl: a.imageUrl,
           imageCredit: a.imageCredit,
-          text: tooOld ? null : a.text || null,
-          textPurgeAt: tooOld ? null : new Date(Date.now() + RETENTION_DAYS * 86400000),
-          status: tooOld ? 'ANTIGA' : 'NOVA',
+          text: skipText ? null : a.text || null,
+          textPurgeAt: skipText ? null : new Date(Date.now() + RETENTION_DAYS * 86400000),
+          status: a.isPaid ? 'ASSINANTES' : tooOld ? 'ANTIGA' : noDate ? 'REVISAR' : 'NOVA',
         },
       });
       saved++;

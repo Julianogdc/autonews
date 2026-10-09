@@ -11,6 +11,7 @@ export type ArticleData = {
   category: string | null;
   imageUrl: string | null;      // só referência, nunca armazenada
   imageCredit: string | null;
+  isPaid: boolean;              // conteúdo exclusivo para assinantes
   text: string;                 // texto extraído (para análise, não para republicar)
   textLength: number;
 };
@@ -89,6 +90,7 @@ export async function fetchArticle(url: string): Promise<ArticleData> {
       categoryFromUrl(url),
     imageUrl: meta('og:image') ?? clean(figure.attr('src')) ?? null,
     imageCredit: caption,
+    isPaid: news?.isAccessibleForFree === false || /exclusivo para assinantes/i.test(html),
     text,
     textLength: text.length,
   };

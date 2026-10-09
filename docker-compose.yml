@@ -29,6 +29,8 @@ services:
     container_name: autonews-web
     restart: unless-stopped
     env_file: .env
+    environment:
+      HOSTNAME: "0.0.0.0"   # escuta em todas as redes do container (senão o Traefik não alcança)
     depends_on:
       postgres:
         condition: service_healthy

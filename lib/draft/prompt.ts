@@ -50,7 +50,7 @@ export function buildPrompt(input: PromptInput): { system: string; user: string 
       `Título: ${s.title}`,
       `Link: ${s.url}`,
       `Números extraídos:\n${facts}`,
-      `Texto:\n${s.text.slice(0, 4000)}`,
+      `Texto:\n${s.text.slice(0, 15000)}`,
     ].join('\n');
   });
 
@@ -100,7 +100,7 @@ Liste SOMENTE as afirmações do rascunho (nomes, idades, números, datas, locai
 Responda somente com JSON: {"nao_sustentado": ["afirmação 1", "afirmação 2"]}. Se tudo estiver nas fontes, responda {"nao_sustentado": []}.`;
 
 export function buildVerifyUser(draft: DraftOutput, sources: SourceInput[]): string {
-  const src = sources.map((s, i) => `FONTE ${i + 1}: ${s.title}\n${s.text.slice(0, 4000)}`).join('\n\n');
+  const src = sources.map((s, i) => `FONTE ${i + 1}: ${s.title}\n${s.text.slice(0, 15000)}`).join('\n\n');
   return `RASCUNHO:\n${draft.title}\n\n${draft.body}\n\nFONTES:\n${src}`;
 }
 

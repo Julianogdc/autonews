@@ -40,6 +40,23 @@ services:
     mem_limit: 512m
     cpus: 0.5
 
+  # Coletor (worker). Nesta etapa só envia sinal de vida; a coleta entra na Fase 2.
+  worker:
+    build:
+      context: .
+      target: run
+    container_name: autonews-worker
+    restart: unless-stopped
+    env_file: .env
+    command: ["node", "-e", "setInterval(() => console.log(new Date().toISOString() + ' worker ativo (coleta entra na Fase 2)'), 60000)"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - autonews_internal
+    mem_limit: 256m
+    cpus: 0.25
+
   # Ferramentas de manutenção (migrations e contas). Só sobe sob demanda.
   migrate:
     build:

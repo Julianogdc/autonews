@@ -17,7 +17,7 @@ export async function runCampoGrandeNews(): Promise<CycleResult> {
     where: { url: { in: urls } },
     select: { url: true },
   });
-  const knownSet = new Set(known.map((k) => k.url));
+  const knownSet = new Set(known.map((k: { url: string }) => k.url));
   const fresh = urls.filter((u) => !knownSet.has(u)).slice(0, MAX_NEW_PER_CYCLE);
 
   let saved = 0;

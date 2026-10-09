@@ -11,6 +11,7 @@ git pull --ff-only
 
 # Banco e painel. Os dados do banco ficam no volume e não são apagados.
 docker compose up -d --build postgres web
+docker compose --profile tools build migrate
 
 # Aplica as migrations pendentes (não apaga nada).
 docker compose --profile tools run --rm migrate npx prisma migrate deploy

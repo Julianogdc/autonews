@@ -5,6 +5,7 @@ import { fetchArticle } from './article';
 const SOURCE = 'campograndenews';
 const MAX_NEW_PER_CYCLE = 20;   // limita o trabalho por rodada
 const RETENTION_DAYS = 30;      // texto extraído é apagado após 30 dias
+const MAX_AGE_HOURS = 48;       // matérias mais antigas são só registradas, sem texto
 
 export type CycleResult = { candidates: number; alreadyKnown: number; saved: number; failed: number };
 
@@ -26,6 +27,11 @@ export async function runCampoGrandeNews(): Promise<CycleResult> {
     try {
       const a = await fetchArticle(url);
       if (!a.title) throw new Error('sem título');
+
+      // Matéria com mais de 48h: registra a URL (para não reler) mas não guarda texto.
+      const published = a.publishedAt ? new Date(a.publishedAt) : null;
+      const tooOld = !published || Date.now() - published.getTime() > MAX_AGE_HOURS * 3600000;
+
       await prisma.article.create({
         data: {
           sourceKey: SOURCE,
@@ -36,8 +42,9 @@ export async function runCampoGrandeNews(): Promise<CycleResult> {
           category: a.category,
           imageUrl: a.imageUrl,
           imageCredit: a.imageCredit,
-          text: a.text || null,
-          textPurgeAt: new Date(Date.now() + RETENTION_DAYS * 86400000),
+          text: tooOld ? null : a.text || null,
+          textPurgeAt: tooOld ? null : new Date(Date.now() + RETENTION_DAYS * 86400000),
+          status: tooOld ? 'ANTIGA' : 'NOVA',
         },
       });
       saved++;

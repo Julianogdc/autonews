@@ -68,10 +68,12 @@ export async function fetchArticle(url: string): Promise<ArticleData> {
     clean($('figcaption').first().text()) ?? clean(figure.attr('alt')) ?? null;
 
   const jsonAuthor = news?.author as Jsonish | undefined;
-  const author =
+  const rawAuthor =
     (jsonAuthor && typeof jsonAuthor.name === 'string' ? clean(jsonAuthor.name) : null) ??
     meta('article:author') ??
     null;
+  // Remove o prefixo "Por " comum nos cabeçalhos de matéria.
+  const author = rawAuthor ? rawAuthor.replace(/^Por\s+/i, '') : null;
 
   return {
     url,

@@ -2,6 +2,7 @@
 // salva matérias novas e apaga textos com mais de 30 dias.
 import { prisma } from '../lib/db';
 import { runSource } from '../lib/collectors/discover';
+import { triagePending } from '../lib/triage/apply';
 import * as cgn from '../lib/collectors/campograndenews';
 import * as correio from '../lib/collectors/correiodoestado';
 import * as topmidia from '../lib/collectors/topmidia';
@@ -31,6 +32,12 @@ async function cycle() {
   } catch (e) {
     console.error(new Date().toISOString(), `${src.key}: erro no ciclo:`, e instanceof Error ? e.message : e);
   }
+  }
+  try {
+    const triaged = await triagePending();
+    console.log(new Date().toISOString(), `triagem: ${triaged} matérias pontuadas`);
+  } catch (e) {
+    console.error(new Date().toISOString(), 'triagem: erro:', e instanceof Error ? e.message : e);
   }
 }
 

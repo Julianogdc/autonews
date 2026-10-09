@@ -56,4 +56,9 @@ model Article {
   textPurgeAt DateTime?
   detectedAt  DateTime  @default(now())
   status      String    @default("NOVA")
+  // Triagem (fase 3): nota 0-100, prioridade e motivos. Preenchida pelo worker.
+  score       Int?
+  priority    String?   // URGENTE | ALTA | NORMAL | BAIXA
+  reasons     String[]  @default([])
+  triagedAt   DateTime?
 }

@@ -27,7 +27,7 @@ docker rm -f autonews-teste 2>/dev/null || true
 
 sleep 10
 echo "=== Teste interno ==="
-docker exec autonews-web wget -qO- http://localhost:3000/api/health || echo "FALHA no health check"
+docker exec autonews-web node -e "fetch('http://localhost:3000/api/health').then(r=>r.text()).then(console.log).catch(()=>{console.log('FALHA no health check');process.exit(1)})" || echo "FALHA no health check"
 echo
 echo "=== Teste pelo subdominio ==="
 curl -s -o /dev/null -w 'autonews.zafiramkt.com.br -> %{http_code}\n' --max-time 20 https://autonews.zafiramkt.com.br/api/health

@@ -1,0 +1,8 @@
+# Nada disto entra na imagem (segredos e arquivos locais)
+.env
+.env.*
+!.env.example
+.git
+.next
+node_modules
+*.log

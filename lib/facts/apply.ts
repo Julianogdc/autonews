@@ -36,10 +36,11 @@ export async function refreshAlerts(storyId: string): Promise<number> {
     select: { id: true, sourceKey: true, facts: { select: { kind: true, value: true, raw: true } } },
   });
 
-  const coverages: Coverage[] = arts.map((a: { id: string; sourceKey: string; facts: Fact[] }) => ({
+  // O banco guarda o tipo do fato como texto; aqui ele volta a ser o tipo conhecido (FactKind).
+  const coverages: Coverage[] = arts.map((a: { id: string; sourceKey: string; facts: { kind: string; value: string; raw: string }[] }) => ({
     articleId: a.id,
     sourceKey: a.sourceKey,
-    facts: a.facts,
+    facts: a.facts as Fact[],
   }));
   const divs = findDivergences(coverages);
 

@@ -90,7 +90,8 @@ export async function fetchArticle(url: string): Promise<ArticleData> {
       categoryFromUrl(url),
     imageUrl: meta('og:image') ?? clean(figure.attr('src')) ?? null,
     imageCredit: caption,
-    isPaid: news?.isAccessibleForFree === false || /exclusivo para assinantes/i.test(html),
+    // Só o dado oficial da página conta: a frase pode aparecer no menu de todo o site.
+    isPaid: news?.isAccessibleForFree === false,
     text,
     textLength: text.length,
   };

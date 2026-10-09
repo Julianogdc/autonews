@@ -1,0 +1,42 @@
+// Schema inicial do Autonews (Fase 1).
+// Tabelas de pautas, fatos, alertas e rascunhos entram nas fases 4 a 6.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// Portais monitorados (fase 2 usa estes registros).
+model Source {
+  id        String   @id @default(cuid())
+  key       String   @unique // ex.: "campograndenews"
+  name      String
+  baseUrl   String
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+// Registro de auditoria: quem fez o quê e quando.
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  target    String?
+  details   Json?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}

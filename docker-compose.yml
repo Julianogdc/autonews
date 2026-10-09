@@ -1,0 +1,62 @@
+# Stack do Autonews. Roda na VPS fora do EasyPanel.
+# O nome fixo "autonews" mantém o mesmo banco e volume já criados no servidor.
+name: autonews
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: autonews-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: autonews
+      POSTGRES_USER: autonews
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - autonews_pgdata:/var/lib/postgresql/data
+    networks:
+      - autonews_internal
+    mem_limit: 1g
+    cpus: 0.5
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U autonews -d autonews"]
+      interval: 10s
+      retries: 5
+
+  web:
+    build:
+      context: .
+      target: run
+    container_name: autonews-web
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - autonews_internal
+      - easypanel   # rede do Traefik: permite publicar o subdomínio
+    mem_limit: 512m
+    cpus: 0.5
+
+  # Ferramentas de manutenção (migrations e contas). Só sobe sob demanda.
+  migrate:
+    build:
+      context: .
+      target: build
+    profiles: ["tools"]
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - autonews_internal
+    mem_limit: 512m
+    cpus: 0.5
+
+volumes:
+  autonews_pgdata:
+
+networks:
+  autonews_internal:
+  easypanel:
+    external: true

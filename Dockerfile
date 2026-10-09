@@ -1,16 +1,20 @@
-# Imagem única do Autonews (painel/API e worker usam o mesmo código).
+# Imagem única do Autonews (painel/API, migrations e contas usam o mesmo código).
+# O OpenSSL é necessário para o Prisma funcionar no Alpine.
 FROM node:20-alpine AS deps
+RUN apk add --no-cache openssl
 WORKDIR /app
 COPY package.json ./
 RUN npm install --no-audit --no-fund
 
 FROM node:20-alpine AS build
+RUN apk add --no-cache openssl
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npx prisma generate && npm run build
 
 FROM node:20-alpine AS run
+RUN apk add --no-cache openssl
 WORKDIR /app
 ENV NODE_ENV=production
 RUN addgroup -S app && adduser -S app -G app

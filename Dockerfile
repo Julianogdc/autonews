@@ -1,17 +1,20 @@
 # Imagem única do Autonews (painel/API, migrations e contas usam o mesmo código).
-# Base Debian: o Prisma funciona sem ajustes de OpenSSL (o Alpine causava erro).
+# Base Debian com OpenSSL instalado explicitamente: o Prisma precisa dele.
 FROM node:20-bookworm-slim AS deps
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY package.json ./
 RUN npm install --no-audit --no-fund
 
 FROM node:20-bookworm-slim AS build
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npx prisma generate && npm run build
 
 FROM node:20-bookworm-slim AS run
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 ENV NODE_ENV=production
 RUN groupadd -r app && useradd -r -g app app

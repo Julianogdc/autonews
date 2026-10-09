@@ -64,6 +64,9 @@ model Article {
   // Agrupamento (fase 4): matérias do mesmo fato apontam para a mesma pauta.
   storyId     String?
   story       Story?    @relation(fields: [storyId], references: [id])
+  // Fatos (fase 5): números extraídos do texto. factsAt marca que a extração já rodou.
+  factsAt     DateTime?
+  facts       Fact[]
 }
 
 // Pauta: um fato coberto por um ou mais portais.
@@ -73,4 +76,31 @@ model Story {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   articles  Article[]
+  alerts    Alert[]
+}
+
+// Número extraído de uma matéria (valor em R$, percentual, quantidade, velocidade, horário).
+model Fact {
+  id        String   @id @default(cuid())
+  articleId String
+  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  kind      String
+  value     String
+  raw       String
+  createdAt DateTime @default(now())
+
+  @@index([articleId])
+}
+
+// Alerta de uma pauta (ex.: divergência de números entre portais). Rastreável até as fontes.
+model Alert {
+  id        String   @id @default(cuid())
+  storyId   String
+  story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  kind      String   // ex.: DIVERGENCIA
+  detail    String
+  data      Json?
+  createdAt DateTime @default(now())
+
+  @@index([storyId])
 }

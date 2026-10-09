@@ -1,5 +1,5 @@
 import { prisma } from '../db';
-import { buildPrompt, isSensitive, parseDraft, type SourceInput } from './prompt';
+import { buildPrompt, buildVerifyUser, isSensitive, parseDraft, parseVerify, VERIFY_SYSTEM, type SourceInput } from './prompt';
 
 const MIN_SCORE = 60;           // só pautas de prioridade ALTA ou URGENTE (controle de custo)
 const SOURCES_PER_STORY = 3;    // no máximo 3 coberturas por pauta
@@ -83,10 +83,15 @@ export async function generateDraftsPending(limit = 2): Promise<{ created: numbe
         sensitive: isSensitive(sources.map((s) => `${s.title} ${s.text}`).join(' ')),
       });
       const draft = parseDraft(await callOpenAI(prompt.system, prompt.user));
+      // Conferência: afirmações que não aparecem nas fontes ficam registradas para revisão.
+      const unsupported = parseVerify(
+        await callOpenAI(VERIFY_SYSTEM, buildVerifyUser(draft, sources)),
+      );
 
       const flags: string[] = [];
       if (st.alerts.length) flags.push('DIVERGENCIA');
       if (prompt.user.includes('Tema sensível')) flags.push('TEMA_SENSIVEL');
+      if (unsupported.length) flags.push('FATOS_A_CONFERIR');
 
       await prisma.draft.create({
         data: {
@@ -100,6 +105,7 @@ export async function generateDraftsPending(limit = 2): Promise<{ created: numbe
           seoDescription: draft.seoDescription,
           sources: sources.map((s) => ({ sourceKey: s.sourceKey, title: s.title, url: s.url })),
           reviewFlags: flags,
+          unsupported,
           model: MODEL,
         },
       });

@@ -9,6 +9,8 @@ const STOPWORDS = new Set([
   'pelos','pelas','seu','sua','seus','suas','ele','ela','eles','elas','vídeo','video','fotos','foto',
   'veja','ainda','também','tambem','neste','nesta','deste','desta','morre','morreu','morrem','mata',
   'matou','ferido','feridos','feridas','ferida','dois','duas','três','tres','quatro','cinco',
+  // Termos de localidade que aparecem em quase toda matéria local: não identificam um fato.
+  'campo','grande','mato','grosso','sul','ms','mt','brasil',
 ]);
 
 // Remove acentos e pontuação, deixa minúsculas.

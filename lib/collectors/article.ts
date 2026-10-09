@@ -28,11 +28,14 @@ function findNewsArticle($: cheerio.CheerioAPI): Jsonish | null {
     try {
       const data = JSON.parse($(el).contents().text()) as unknown;
       const list = Array.isArray(data) ? data : [data];
-      for (const item of list as Jsonish[]) {
-        const type = String(item?.['@type'] ?? '');
-        if (/NewsArticle|Article|ReportageNewsArticle/i.test(type)) {
-          found = item;
-          return;
+      for (const top of list as Jsonish[]) {
+        const pool = Array.isArray(top?.['@graph']) ? (top['@graph'] as Jsonish[]) : [top];
+        for (const item of pool) {
+          const type = String(item?.['@type'] ?? '');
+          if (/NewsArticle|Article|ReportageNewsArticle/i.test(type)) {
+            found = item;
+            return;
+          }
         }
       }
     } catch {
@@ -47,6 +50,14 @@ function categoryFromUrl(url: string): string | null {
   const first = new URL(url).pathname.split('/').filter(Boolean)[0];
   if (!first || /^\d/.test(first)) return null;
   return first.charAt(0).toUpperCase() + first.slice(1).replace(/-/g, ' ');
+}
+
+// Data visível no formato "09/10/2026 - 18h01" ou "09/10/2026 às 15:00" (fuso de Mato Grosso do Sul, -04:00).
+function visibleDate(html: string): string | null {
+  const m = html.match(/(\d{2})\/(\d{2})\/(\d{4})\s*(?:-|às|as)?\s*(\d{2})[h:](\d{2})/);
+  if (!m) return null;
+  const [, dd, mm, yyyy, hh, mi] = m;
+  return `${yyyy}-${mm}-${dd}T${hh}:${mi}:00-04:00`;
 }
 
 export async function fetchArticle(url: string): Promise<ArticleData> {
@@ -82,7 +93,8 @@ export async function fetchArticle(url: string): Promise<ArticleData> {
     publishedAt:
       (typeof news?.datePublished === 'string' ? news.datePublished : null) ??
       meta('article:published_time') ??
-      null,
+      html.match(/"datePublished"\s*:\s*"([^"]+)"/)?.[1] ??
+      visibleDate(html),
     author,
     category:
       (typeof news?.articleSection === 'string' ? clean(news.articleSection) : null) ??

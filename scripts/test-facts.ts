@@ -26,3 +26,7 @@ const div2 = findDivergences([
   { articleId: 'd', sourceKey: 'topmidia', facts: extractFacts('Cesta custa R$ 806,50') },
 ]);
 console.log('\nCaso com dois valores numa das matérias (esperado: nenhuma divergência):', div2.length === 0 ? 'OK' : 'ERRO', JSON.stringify(div2));
+
+// "251 km" é distância, não velocidade.
+const dist = extractFacts('Caminhão roda 251 km até a fronteira');
+console.log('\nDistância não vira velocidade:', dist.some((f) => f.kind === 'velocidade') ? 'ERRO' : 'OK');

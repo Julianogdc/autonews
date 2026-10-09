@@ -43,7 +43,8 @@ export function extractFacts(text: string): Fact[] {
     }
   }
 
-  for (const m of text.matchAll(/\d+(?:,\d+)?\s?(?:km\/h|km|°C|graus)/gi)) {
+  // Só velocidade e temperatura: "km" sozinho é distância e fica de fora.
+  for (const m of text.matchAll(/\d+(?:,\d+)?\s?(?:km\/h|°C|graus)/gi)) {
     facts.push({ kind: 'velocidade', value: m[0].replace(/\s/g, '').toLowerCase(), raw: m[0] });
   }
 

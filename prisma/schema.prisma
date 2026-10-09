@@ -77,6 +77,28 @@ model Story {
   updatedAt DateTime  @updatedAt
   articles  Article[]
   alerts    Alert[]
+  drafts    Draft[]
+}
+
+// Rascunho de matéria gerado por IA (fase 6). A equipe revisa e publica manualmente.
+model Draft {
+  id              String   @id @default(cuid())
+  storyId         String
+  story           Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  title           String
+  subtitle        String?
+  body            String
+  category        String?
+  tags            String[] @default([])
+  seoTitle        String?
+  seoDescription  String?
+  sources         Json     // [{ sourceKey, title, url }]
+  reviewFlags     String[] @default([]) // ex.: DIVERGENCIA, TEMA_SENSIVEL
+  model           String
+  status          String   @default("GERADO") // GERADO | PUBLICADA | IGNORADA
+  createdAt       DateTime @default(now())
+
+  @@index([storyId])
 }
 
 // Número extraído de uma matéria (valor em R$, percentual, quantidade, velocidade, horário).

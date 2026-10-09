@@ -61,4 +61,16 @@ model Article {
   priority    String?   // URGENTE | ALTA | NORMAL | BAIXA
   reasons     String[]  @default([])
   triagedAt   DateTime?
+  // Agrupamento (fase 4): matérias do mesmo fato apontam para a mesma pauta.
+  storyId     String?
+  story       Story?    @relation(fields: [storyId], references: [id])
+}
+
+// Pauta: um fato coberto por um ou mais portais.
+model Story {
+  id        String    @id @default(cuid())
+  title     String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  articles  Article[]
 }

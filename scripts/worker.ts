@@ -3,6 +3,7 @@
 import { prisma } from '../lib/db';
 import { runSource } from '../lib/collectors/discover';
 import { triagePending } from '../lib/triage/apply';
+import { groupPending } from '../lib/grouping/apply';
 import * as cgn from '../lib/collectors/campograndenews';
 import * as correio from '../lib/collectors/correiodoestado';
 import * as topmidia from '../lib/collectors/topmidia';
@@ -38,6 +39,12 @@ async function cycle() {
     console.log(new Date().toISOString(), `triagem: ${triaged} matérias pontuadas`);
   } catch (e) {
     console.error(new Date().toISOString(), 'triagem: erro:', e instanceof Error ? e.message : e);
+  }
+  try {
+    const grouped = await groupPending();
+    console.log(new Date().toISOString(), `agrupamento: ${grouped} matérias ligadas a pautas`);
+  } catch (e) {
+    console.error(new Date().toISOString(), 'agrupamento: erro:', e instanceof Error ? e.message : e);
   }
 }
 

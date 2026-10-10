@@ -17,7 +17,28 @@ const SOURCES = [
 ];
 
 const INTERVAL_MS = 15 * 60 * 1000;
+const CHECK_MS = 15 * 1000; // de quanto em quanto tempo olha se alguém apertou "Buscar agora"
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// Espera até o próximo ciclo, mas sai antes se houver pedido de busca feito pelo painel.
+async function waitNext(since: Date) {
+  const end = Date.now() + INTERVAL_MS;
+  while (Date.now() < end) {
+    await sleep(CHECK_MS);
+    try {
+      const req = await prisma.auditLog.findFirst({
+        where: { action: 'collect_now', createdAt: { gt: since } },
+        select: { id: true },
+      });
+      if (req) {
+        console.log(new Date().toISOString(), 'busca manual pedida pelo painel');
+        return;
+      }
+    } catch (e) {
+      console.error(new Date().toISOString(), 'pedido manual: erro ao consultar:', e instanceof Error ? e.message : e);
+    }
+  }
+}
 
 async function cycle() {
   for (const src of SOURCES) {
@@ -63,10 +84,12 @@ async function cycle() {
 }
 
 async function main() {
-  console.log(new Date().toISOString(), 'worker iniciado (ciclo a cada 15 min)');
+  console.log(new Date().toISOString(), 'worker iniciado (ciclo a cada 15 min ou quando pedido no painel)');
   while (true) {
+    const started = new Date();
     await cycle();
-    await sleep(INTERVAL_MS);
+    await prisma.auditLog.create({ data: { action: 'collect_done' } }).catch(() => {});
+    await waitNext(started);
   }
 }
 

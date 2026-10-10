@@ -6,7 +6,7 @@ const PRIORITY_COLOR: Record<string, string> = {
   URGENTE: '#b91c1c', ALTA: '#c2410c', NORMAL: '#4b5563', BAIXA: '#9ca3af',
 };
 
-export default async function Home({ searchParams }: { searchParams: { prioridade?: string; fonte?: string; situacao?: string } }) {
+export default async function Home({ searchParams }: { searchParams: { prioridade?: string; fonte?: string; situacao?: string; busca?: string } }) {
   if (!currentUserId()) {
     return (
       <div className="alert alert-info">Sessão inválida. <Link href="/login">Entrar</Link></div>
@@ -28,6 +28,18 @@ export default async function Home({ searchParams }: { searchParams: { prioridad
     },
   });
 
+  // Última busca concluída pelo coletor e se há pedido manual ainda na fila.
+  const lastDone = await prisma.auditLog.findFirst({
+    where: { action: 'collect_done' }, orderBy: { createdAt: 'desc' }, select: { createdAt: true },
+  });
+  const pending = await prisma.auditLog.findFirst({
+    where: { action: 'collect_now', ...(lastDone ? { createdAt: { gt: lastDone.createdAt } } : {}) },
+    select: { id: true },
+  });
+  const lastDoneText = lastDone
+    ? lastDone.createdAt.toLocaleString('pt-BR', { timeZone: 'America/Campo_Grande', dateStyle: 'short', timeStyle: 'short' })
+    : null;
+
   // Ordena pela matéria de maior nota de cada pauta.
   const stories = rows
     .map((s: any) => {
@@ -47,6 +59,20 @@ export default async function Home({ searchParams }: { searchParams: { prioridad
     <>
       <h1>Pautas</h1>
       <p className="muted">Ordenadas pela nota da matéria mais relevante. Revise antes de publicar.</p>
+
+      <form method="post" action="/api/collect-now" className="row" style={{ margin: '1rem 0' }}>
+        <button type="submit" className="primary" disabled={!!pending}>
+          {pending ? 'Buscando…' : 'Buscar notícias agora'}
+        </button>
+        <span className="muted">
+          {pending
+            ? 'A busca começa em até 15 segundos e leva alguns minutos. Atualize a página depois.'
+            : lastDoneText ? `Última busca: ${lastDoneText}` : 'Busca automática a cada 15 minutos.'}
+        </span>
+      </form>
+      {searchParams.busca === 'aguarde' && (
+        <div className="alert alert-warn">Uma busca foi pedida há menos de 3 minutos. Aguarde um pouco antes de pedir outra.</div>
+      )}
 
       <form method="get" className="row" style={{ margin: '1rem 0' }}>
         <select name="prioridade" defaultValue={searchParams.prioridade ?? ''}>

@@ -6,7 +6,7 @@ const PRIORITY_COLOR: Record<string, string> = {
   URGENTE: '#b91c1c', ALTA: '#c2410c', NORMAL: '#4b5563', BAIXA: '#9ca3af',
 };
 
-export default async function Home({ searchParams }: { searchParams: { prioridade?: string; fonte?: string; situacao?: string; busca?: string } }) {
+export default async function Home({ searchParams }: { searchParams: { prioridade?: string; fonte?: string; situacao?: string; busca?: string; ordem?: string } }) {
   if (!currentUserId()) {
     return (
       <div className="alert alert-info">Sessão inválida. <Link href="/login">Entrar</Link></div>
@@ -21,7 +21,7 @@ export default async function Home({ searchParams }: { searchParams: { prioridad
       title: true,
       createdAt: true,
       articles: {
-        select: { title: true, sourceKey: true, score: true, priority: true, reasons: true },
+        select: { title: true, sourceKey: true, score: true, priority: true, reasons: true, publishedAt: true, detectedAt: true },
       },
       drafts: { select: { reviewFlags: true, status: true }, orderBy: { createdAt: 'desc' }, take: 1 },
       alerts: { where: { kind: 'DIVERGENCIA' }, select: { id: true } },
@@ -40,13 +40,15 @@ export default async function Home({ searchParams }: { searchParams: { prioridad
     ? lastDone.createdAt.toLocaleString('pt-BR', { timeZone: 'America/Campo_Grande', dateStyle: 'short', timeStyle: 'short' })
     : null;
 
-  // Ordena pela matéria de maior nota de cada pauta.
+  // "relevantes": maior nota primeiro (urgentes no topo). "recentes": cobertura mais nova primeiro.
+  const ordem = searchParams.ordem === 'recentes' ? 'recentes' : 'relevantes';
   const stories = rows
     .map((s: any) => {
       const top = [...s.articles].sort((a: any, b: any) => (b.score ?? -1) - (a.score ?? -1))[0];
-      return { ...s, top, topScore: top?.score ?? -1 };
+      const latest = Math.max(...s.articles.map((a: any) => new Date(a.publishedAt ?? a.detectedAt).getTime()), 0);
+      return { ...s, top, topScore: top?.score ?? -1, latest };
     })
-    .sort((a: any, b: any) => b.topScore - a.topScore)
+    .sort((a: any, b: any) => (ordem === 'recentes' ? b.latest - a.latest : b.topScore - a.topScore))
     .filter((s: any) => !searchParams.prioridade || s.top?.priority === searchParams.prioridade)
     .filter((s: any) => !searchParams.fonte || s.articles.some((a: any) => a.sourceKey === searchParams.fonte))
     .filter((s: any) => {
@@ -58,7 +60,11 @@ export default async function Home({ searchParams }: { searchParams: { prioridad
   return (
     <>
       <h1>Pautas</h1>
-      <p className="muted">Ordenadas pela nota da matéria mais relevante. Revise antes de publicar.</p>
+      <p className="muted">
+        {ordem === 'recentes'
+          ? 'Mais recentes primeiro, de qualquer prioridade. Revise antes de publicar.'
+          : 'Ordenadas pela nota da matéria mais relevante. Revise antes de publicar.'}
+      </p>
 
       <form method="post" action="/api/collect-now" className="row" style={{ margin: '1rem 0' }}>
         <button type="submit" className="primary" disabled={!!pending}>
@@ -75,6 +81,10 @@ export default async function Home({ searchParams }: { searchParams: { prioridad
       )}
 
       <form method="get" className="row" style={{ margin: '1rem 0' }}>
+        <select name="ordem" defaultValue={ordem}>
+          <option value="relevantes">Urgentes primeiro</option>
+          <option value="recentes">Últimas notícias</option>
+        </select>
         <select name="prioridade" defaultValue={searchParams.prioridade ?? ''}>
           <option value="">Todas as prioridades</option>
           <option value="URGENTE">Urgente</option>
@@ -110,6 +120,11 @@ export default async function Home({ searchParams }: { searchParams: { prioridad
                 {s.top?.priority ?? 'BAIXA'} · {s.topScore}
               </span>
               <span className="muted">{s.articles.length} cobertura(s)</span>
+              {s.latest > 0 && (
+                <span className="muted">
+                  · {new Date(s.latest).toLocaleString('pt-BR', { timeZone: 'America/Campo_Grande', dateStyle: 'short', timeStyle: 'short' })}
+                </span>
+              )}
               {s.alerts.length > 0 && <span className="flag flag-danger">divergência</span>}
               {flags.includes('TEMA_SENSIVEL') && <span className="flag flag-danger">tema sensível</span>}
               {flags.includes('FATOS_A_CONFERIR') && <span className="flag flag-warn">a conferir</span>}

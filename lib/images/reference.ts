@@ -4,7 +4,7 @@
 
 export type ReferenceImage = {
   url: string;
-  credit: string | null;
+  credit: string;
   origin: string;            // portal de onde veio
   releaseStatus: 'NAO_LIBERADA';
   notice: string;
@@ -29,7 +29,7 @@ export function referenceImage(article: {
   if (!article.imageUrl) return null;
   return {
     url: article.imageUrl,
-    credit: article.imageCredit,
+    credit: article.imageCredit ?? 'Crédito não informado pelo portal',
     origin: ORIGIN_NAMES[article.sourceKey] ?? article.sourceKey,
     releaseStatus: 'NAO_LIBERADA',
     notice: REFERENCE_NOTICE,

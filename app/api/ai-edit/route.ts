@@ -26,6 +26,9 @@ export async function POST(req: NextRequest) {
     const out = typeof data.texto === 'string' ? data.texto.trim() : '';
     if (!out) throw new Error('a IA não devolveu o texto');
     const avisos = Array.isArray(data.avisos) ? data.avisos.filter((x): x is string => typeof x === 'string') : [];
+    if (mode !== 'manchete' && out === text) {
+      avisos.unshift('A IA devolveu o texto sem nenhuma alteração. Confira o texto ou tente outro modelo.');
+    }
 
     // Registra o uso sem guardar o texto (privacidade): só modelo, modo e tamanho.
     await prisma.auditLog.create({

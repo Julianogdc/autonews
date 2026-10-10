@@ -11,7 +11,11 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
   if (!req.cookies.get('autonews_session')) {
-    return new NextResponse(null, { status: 307, headers: { Location: '/login' } });
+    // O middleware exige endereço completo. Usa o domínio que o navegador pediu (repassado
+    // pelo Traefik), e não req.nextUrl, que aponta para o endereço interno 0.0.0.0:3000.
+    const host = req.headers.get('x-forwarded-host') ?? req.headers.get('host') ?? req.nextUrl.host;
+    const proto = req.headers.get('x-forwarded-proto') ?? req.nextUrl.protocol.replace(':', '');
+    return NextResponse.redirect(new URL('/login', `${proto}://${host}`), 307);
   }
   return NextResponse.next();
 }

@@ -46,7 +46,15 @@ export default async function Pauta({ params }: { params: { id: string } }) {
       <h2>Rascunhos</h2>
       {story.drafts.length === 0 && <p>Nenhum rascunho ainda.</p>}
       {story.drafts.map((d: any) => {
-        const copyText = `${d.title}\n\n${d.body}`;
+        const tudo = [
+          d.title,
+          d.subtitle ?? '',
+          d.body,
+          `Categoria: ${d.category ?? ''}`,
+          `Tags: ${d.tags.join(', ')}`,
+          `SEO título: ${d.seoTitle ?? ''}`,
+          `SEO descrição: ${d.seoDescription ?? ''}`,
+        ].join('\n\n');
         return (
           <article key={d.id} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', marginBottom: '1.25rem' }}>
             <div style={{ fontSize: '0.85rem', color: '#4b5563', marginBottom: '0.5rem' }}>
@@ -73,7 +81,12 @@ export default async function Pauta({ params }: { params: { id: string } }) {
             )}
 
             <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-              <CopyButton text={copyText} label="Copiar matéria" />
+              <CopyButton text={d.title} label="Copiar título" />
+              <CopyButton text={d.subtitle ?? ''} label="Copiar subtítulo" />
+              <CopyButton text={d.body} label="Copiar texto" />
+              <CopyButton text={d.tags.join(', ')} label="Copiar tags" />
+              <CopyButton text={`${d.seoTitle ?? ''}\n${d.seoDescription ?? ''}`} label="Copiar SEO" />
+              <CopyButton text={tudo} label="Copiar tudo" />
               <form method="post" action="/api/pauta-status">
                 <input type="hidden" name="draftId" value={d.id} />
                 <button name="status" value="PUBLICADA" style={{ padding: '0.4rem 0.8rem', cursor: 'pointer' }}>Marcar como publicada</button>{' '}

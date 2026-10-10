@@ -1,11 +1,11 @@
-// Worker do Autonews: a cada 15 minutos verifica o Campo Grande News,
+// Worker do Autonews: a cada 15 minutos verifica os portais,
 // salva matérias novas e apaga textos com mais de 30 dias.
+// Rascunhos com IA não são gerados aqui: só quando alguém pede no painel ("Gerar matéria").
 import { prisma } from '../lib/db';
 import { runSource } from '../lib/collectors/discover';
 import { triagePending } from '../lib/triage/apply';
 import { groupPending } from '../lib/grouping/apply';
 import { processFacts } from '../lib/facts/apply';
-import { generateDraftsPending } from '../lib/draft/generate';
 import * as cgn from '../lib/collectors/campograndenews';
 import * as correio from '../lib/collectors/correiodoestado';
 import * as topmidia from '../lib/collectors/topmidia';
@@ -74,12 +74,6 @@ async function cycle() {
     console.log(new Date().toISOString(), `fatos: ${f.extracted} matérias processadas, ${f.alerts} alertas de divergência`);
   } catch (e) {
     console.error(new Date().toISOString(), 'fatos: erro:', e instanceof Error ? e.message : e);
-  }
-  try {
-    const d = await generateDraftsPending();
-    if (d.created || d.failed) console.log(new Date().toISOString(), `rascunhos: ${d.created} criados, ${d.failed} falhas`);
-  } catch (e) {
-    console.error(new Date().toISOString(), 'rascunhos: erro:', e instanceof Error ? e.message : e);
   }
 }
 

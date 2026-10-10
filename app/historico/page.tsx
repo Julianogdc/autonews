@@ -7,6 +7,8 @@ const ACTION_LABEL: Record<string, string> = {
   login: 'Entrou no painel',
   draft_status: 'Mudou status',
   collect_now: 'Pediu busca de notícias',
+  draft_request: 'Pediu matéria à IA',
+  draft_failed: 'Falha ao gerar matéria',
 };
 
 // Histórico básico: quem fez o quê e quando (logins, mudanças de status e buscas manuais).
@@ -46,7 +48,8 @@ export default async function Historico() {
                 <td>
                   {l.details?.status === 'PUBLICADA' && <span className="status status-publicada">Publicada</span>}
                   {l.details?.status === 'IGNORADA' && <span className="status status-ignorada">Ignorada</span>}
-                  {l.action === 'draft_status' && l.target && <> <Link href={`/pauta/${l.target}`} className="muted">ver</Link></>}
+                  {l.action === 'draft_failed' && <span className="muted">{String(l.details?.error ?? '')}</span>}
+                  {(l.action === 'draft_request' || l.action === 'draft_failed') && l.target && <> <Link href={`/pauta/${l.target}`} className="muted">ver</Link></>}
                 </td>
               </tr>
             ))}

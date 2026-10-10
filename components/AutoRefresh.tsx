@@ -3,13 +3,13 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
-// Enquanto a busca manual está na fila ou rodando, recarrega os dados da página a cada 20 s.
-export default function AutoRefresh({ active }: { active: boolean }) {
+// Enquanto algo está rodando (busca manual, geração de rascunho), recarrega os dados da página.
+export default function AutoRefresh({ active, interval = 20000 }: { active: boolean; interval?: number }) {
   const router = useRouter();
   useEffect(() => {
     if (!active) return;
-    const t = setInterval(() => router.refresh(), 20000);
+    const t = setInterval(() => router.refresh(), interval);
     return () => clearInterval(t);
-  }, [active, router]);
+  }, [active, interval, router]);
   return null;
 }

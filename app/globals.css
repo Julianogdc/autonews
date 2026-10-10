@@ -324,6 +324,11 @@ button:disabled { opacity: 0.5; cursor: not-allowed; filter: none; }
   animation: spin 0.8s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+.spinner-dark { display: inline-block; vertical-align: -2px; border-color: rgba(29, 78, 216, 0.2); border-top-color: var(--accent); }
+
+.generate { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; }
+.generate p { margin: 0 0 0.5rem; color: var(--text-2); }
+.generate .alert { margin: 0 0 0.75rem; text-align: left; }
 
 select, input, textarea {
   border: 1px solid var(--border-strong);

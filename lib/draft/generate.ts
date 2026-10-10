@@ -1,7 +1,6 @@
 import { prisma } from '../db';
 import { buildPrompt, buildVerifyUser, isSensitive, parseDraft, parseVerify, VERIFY_SYSTEM, type SourceInput } from './prompt';
 
-const MIN_SCORE = 60;           // só pautas de prioridade ALTA ou URGENTE (controle de custo)
 const SOURCES_PER_STORY = 3;    // no máximo 3 coberturas por pauta
 const MODEL = process.env.AI_MODEL || 'gpt-4o-mini';
 const TIMEOUT_MS = 90000;
@@ -45,15 +44,10 @@ async function callOpenAI(system: string, user: string): Promise<string> {
   }
 }
 
-// Gera rascunhos para pautas de prioridade alta que ainda não têm rascunho.
-export async function generateDraftsPending(limit = 2): Promise<{ created: number; failed: number }> {
-  if (!process.env.AI_API_KEY) return { created: 0, failed: 0 };
-
-  const stories: StoryRow[] = await prisma.story.findMany({
-    where: {
-      drafts: { none: {} },
-      articles: { some: { score: { gte: MIN_SCORE }, text: { not: null } } },
-    },
+// Gera o rascunho de uma pauta. Só roda quando alguém pede no painel (botão "Gerar matéria").
+export async function generateDraftForStory(storyId: string): Promise<void> {
+  const st: StoryRow | null = await prisma.story.findUnique({
+    where: { id: storyId },
     select: {
       id: true,
       articles: {
@@ -67,53 +61,43 @@ export async function generateDraftsPending(limit = 2): Promise<{ created: numbe
       },
       alerts: { where: { kind: 'DIVERGENCIA' }, select: { detail: true } },
     },
-    take: limit,
   });
+  if (!st) throw new Error('pauta não encontrada');
+  if (!st.articles.length) throw new Error('o texto das fontes não está mais disponível (é apagado após 30 dias)');
 
-  let created = 0;
-  let failed = 0;
-  for (const st of stories) {
-    try {
-      const sources: SourceInput[] = st.articles.map((a) => ({
-        sourceKey: a.sourceKey, title: a.title, url: a.url, text: a.text ?? '', facts: a.facts,
-      }));
-      const prompt = buildPrompt({
-        sources,
-        divergences: st.alerts.map((a) => a.detail),
-        sensitive: isSensitive(sources.map((s) => `${s.title} ${s.text}`).join(' ')),
-      });
-      const draft = parseDraft(await callOpenAI(prompt.system, prompt.user));
-      // Conferência: afirmações que não aparecem nas fontes ficam registradas para revisão.
-      const unsupported = parseVerify(
-        await callOpenAI(VERIFY_SYSTEM, buildVerifyUser(draft, sources)),
-      );
+  const sources: SourceInput[] = st.articles.map((a) => ({
+    sourceKey: a.sourceKey, title: a.title, url: a.url, text: a.text ?? '', facts: a.facts,
+  }));
+  const prompt = buildPrompt({
+    sources,
+    divergences: st.alerts.map((a) => a.detail),
+    sensitive: isSensitive(sources.map((s) => `${s.title} ${s.text}`).join(' ')),
+  });
+  const draft = parseDraft(await callOpenAI(prompt.system, prompt.user));
+  // Conferência: afirmações que não aparecem nas fontes ficam registradas para revisão.
+  const unsupported = parseVerify(
+    await callOpenAI(VERIFY_SYSTEM, buildVerifyUser(draft, sources)),
+  );
 
-      const flags: string[] = [];
-      if (st.alerts.length) flags.push('DIVERGENCIA');
-      if (prompt.user.includes('Tema sensível')) flags.push('TEMA_SENSIVEL');
-      if (unsupported.length) flags.push('FATOS_A_CONFERIR');
+  const flags: string[] = [];
+  if (st.alerts.length) flags.push('DIVERGENCIA');
+  if (prompt.user.includes('Tema sensível')) flags.push('TEMA_SENSIVEL');
+  if (unsupported.length) flags.push('FATOS_A_CONFERIR');
 
-      await prisma.draft.create({
-        data: {
-          storyId: st.id,
-          title: draft.title,
-          subtitle: draft.subtitle,
-          body: draft.body,
-          category: draft.category,
-          tags: draft.tags,
-          seoTitle: draft.seoTitle,
-          seoDescription: draft.seoDescription,
-          sources: sources.map((s) => ({ sourceKey: s.sourceKey, title: s.title, url: s.url })),
-          reviewFlags: flags,
-          unsupported,
-          model: MODEL,
-        },
-      });
-      created++;
-    } catch (e) {
-      failed++;
-      console.error(`rascunho da pauta ${st.id} falhou:`, e instanceof Error ? e.message : e);
-    }
-  }
-  return { created, failed };
+  await prisma.draft.create({
+    data: {
+      storyId: st.id,
+      title: draft.title,
+      subtitle: draft.subtitle,
+      body: draft.body,
+      category: draft.category,
+      tags: draft.tags,
+      seoTitle: draft.seoTitle,
+      seoDescription: draft.seoDescription,
+      sources: sources.map((s) => ({ sourceKey: s.sourceKey, title: s.title, url: s.url })),
+      reviewFlags: flags,
+      unsupported,
+      model: MODEL,
+    },
+  });
 }

@@ -3,6 +3,9 @@ import { prisma } from '@/lib/db';
 import { currentUserId } from '@/lib/session';
 import { referenceImage } from '@/lib/images/reference';
 import CopyButton from '@/components/CopyButton';
+import GenerateButton from '@/components/GenerateButton';
+import AutoRefresh from '@/components/AutoRefresh';
+import { draftRequestState } from '@/lib/draft/request';
 import { PRIORITY_LABEL, SOURCE_LABEL, formatDateTime, timeAgo } from '@/lib/ui';
 
 const DRAFT_STATUS: Record<string, string> = { GERADO: 'Rascunho pronto', PUBLICADA: 'Publicada', IGNORADA: 'Ignorada' };
@@ -34,6 +37,7 @@ export default async function Pauta({ params }: { params: { id: string } }) {
   const topArticle = story.articles[0];
   const ref = topArticle ? referenceImage(topArticle) : null;
   const priority: string = topArticle?.priority ?? 'BAIXA';
+  const req = story.drafts.length === 0 ? await draftRequestState(story.id) : null;
 
   return (
     <>
@@ -55,8 +59,24 @@ export default async function Pauta({ params }: { params: { id: string } }) {
       )}
 
       <h2>Rascunho</h2>
-      {story.drafts.length === 0 && (
-        <div className="empty"><p>Nenhum rascunho ainda. Só pautas de prioridade alta ou urgente recebem rascunho automático.</p></div>
+      {story.drafts.length === 0 && req && (
+        <div className="empty generate">
+          <AutoRefresh active={req.state === 'running'} interval={5000} />
+          {req.state === 'running' ? (
+            <>
+              <p><span className="spinner spinner-dark" /> <strong>Gerando a matéria com IA…</strong></p>
+              <p className="muted">Leva cerca de 1 minuto. A página atualiza sozinha.</p>
+            </>
+          ) : (
+            <>
+              {req.state === 'failed' && (
+                <div className="alert alert-danger">Não foi possível gerar: {req.error}</div>
+              )}
+              <p>Esta pauta ainda não tem matéria. A IA escreve um rascunho a partir das coberturas abaixo.</p>
+              <GenerateButton storyId={story.id} label={req.state === 'failed' ? 'Tentar de novo' : 'Gerar matéria'} />
+            </>
+          )}
+        </div>
       )}
 
       {story.drafts.map((d: any) => {

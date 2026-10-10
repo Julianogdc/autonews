@@ -1,14 +1,22 @@
 import Link from 'next/link';
 import { prisma } from '@/lib/db';
 import { currentUserId } from '@/lib/session';
+import { formatDateTime } from '@/lib/ui';
 
-// Histórico básico: quem fez o quê e quando (logins e mudanças de status).
+const ACTION_LABEL: Record<string, string> = {
+  login: 'Entrou no painel',
+  draft_status: 'Mudou status',
+  collect_now: 'Pediu busca de notícias',
+};
+
+// Histórico básico: quem fez o quê e quando (logins, mudanças de status e buscas manuais).
 export default async function Historico() {
   if (!currentUserId()) {
     return <div className="alert alert-info">Sessão inválida. <Link href="/login">Entrar</Link></div>;
   }
 
   const logs: any[] = await prisma.auditLog.findMany({
+    where: { action: { not: 'collect_done' } }, // registro automático do coletor, não é ação de pessoa
     orderBy: { createdAt: 'desc' },
     take: 100,
     select: { userId: true, action: true, target: true, details: true, createdAt: true },
@@ -18,23 +26,33 @@ export default async function Historico() {
 
   return (
     <>
-      <h1>Histórico</h1>
-      <p className="muted">Últimos 100 registros: entradas no painel e mudanças de status.</p>
-      <table>
-        <thead>
-          <tr><th>Quando (Cuiabá)</th><th>Quem</th><th>Ação</th><th>Detalhe</th></tr>
-        </thead>
-        <tbody>
-          {logs.map((l, i) => (
-            <tr key={i}>
-              <td>{new Date(l.createdAt).toLocaleString('pt-BR', { timeZone: 'America/Cuiaba' })}</td>
-              <td>{(l.userId && names.get(l.userId)) || '—'}</td>
-              <td>{l.action === 'login' ? 'Entrou no painel' : l.action === 'draft_status' ? 'Mudou status' : l.action}</td>
-              <td>{l.details?.status === 'PUBLICADA' ? 'Publicada' : l.details?.status === 'IGNORADA' ? 'Ignorada' : ''}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <div className="page-head">
+        <div>
+          <h1>Histórico</h1>
+          <p className="muted">Últimos 100 registros: entradas no painel, mudanças de status e buscas manuais.</p>
+        </div>
+      </div>
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Quando</th><th>Quem</th><th>Ação</th><th>Detalhe</th></tr>
+          </thead>
+          <tbody>
+            {logs.map((l, i) => (
+              <tr key={i}>
+                <td className="nowrap">{formatDateTime(l.createdAt)}</td>
+                <td>{(l.userId && names.get(l.userId)) || '—'}</td>
+                <td>{ACTION_LABEL[l.action] ?? l.action}</td>
+                <td>
+                  {l.details?.status === 'PUBLICADA' && <span className="status status-publicada">Publicada</span>}
+                  {l.details?.status === 'IGNORADA' && <span className="status status-ignorada">Ignorada</span>}
+                  {l.action === 'draft_status' && l.target && <> <Link href={`/pauta/${l.target}`} className="muted">ver</Link></>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </>
   );
 }

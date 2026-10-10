@@ -3,6 +3,9 @@ import { prisma } from '@/lib/db';
 import { currentUserId } from '@/lib/session';
 import { referenceImage } from '@/lib/images/reference';
 import CopyButton from '@/components/CopyButton';
+import { PRIORITY_LABEL, SOURCE_LABEL, formatDateTime, timeAgo } from '@/lib/ui';
+
+const DRAFT_STATUS: Record<string, string> = { GERADO: 'Rascunho pronto', PUBLICADA: 'Publicada', IGNORADA: 'Ignorada' };
 
 export default async function Pauta({ params }: { params: { id: string } }) {
   if (!currentUserId()) {
@@ -17,7 +20,7 @@ export default async function Pauta({ params }: { params: { id: string } }) {
       articles: {
         orderBy: { score: 'desc' },
         select: {
-          id: true, sourceKey: true, title: true, url: true, publishedAt: true,
+          id: true, sourceKey: true, title: true, url: true, publishedAt: true, detectedAt: true,
           score: true, priority: true, reasons: true, imageUrl: true, imageCredit: true,
         },
       },
@@ -30,11 +33,19 @@ export default async function Pauta({ params }: { params: { id: string } }) {
 
   const topArticle = story.articles[0];
   const ref = topArticle ? referenceImage(topArticle) : null;
+  const priority: string = topArticle?.priority ?? 'BAIXA';
 
   return (
     <>
-      <p className="muted"><Link href="/">← Pautas</Link></p>
-      <h1>{topArticle?.title ?? story.title}</h1>
+      <Link href="/" className="back">← Voltar às pautas</Link>
+
+      <header className="detail-head">
+        <div className="row">
+          <span className={`pill pill-${priority.toLowerCase()}`}>{PRIORITY_LABEL[priority] ?? priority} · nota {topArticle?.score ?? '—'}</span>
+          <span className="muted">{story.articles.length} cobertura(s)</span>
+        </div>
+        <h1>{topArticle?.title ?? story.title}</h1>
+      </header>
 
       {story.alerts.length > 0 && (
         <div className="alert alert-danger">
@@ -43,8 +54,10 @@ export default async function Pauta({ params }: { params: { id: string } }) {
         </div>
       )}
 
-      <h2>Rascunhos</h2>
-      {story.drafts.length === 0 && <p className="muted">Nenhum rascunho ainda.</p>}
+      <h2>Rascunho</h2>
+      {story.drafts.length === 0 && (
+        <div className="empty"><p>Nenhum rascunho ainda. Só pautas de prioridade alta ou urgente recebem rascunho automático.</p></div>
+      )}
 
       {story.drafts.map((d: any) => {
         const tudo = [
@@ -57,77 +70,75 @@ export default async function Pauta({ params }: { params: { id: string } }) {
           `SEO descrição: ${d.seoDescription ?? ''}`,
         ].join('\n\n');
         return (
-          <article key={d.id} className="card" style={{ padding: '1.25rem' }}>
+          <article key={d.id} className="card draft">
             <div className="draft-meta">
-              <span className="tag">{d.status}</span>{' '}
-              {d.reviewFlags.includes('TEMA_SENSIVEL') && <span className="flag flag-danger">tema sensível: revisão humana obrigatória</span>}{' '}
-              {d.reviewFlags.includes('FATOS_A_CONFERIR') && <span className="flag flag-warn">a conferir</span>}{' '}
-              <span className="muted">modelo {d.model}</span>
+              <span className={`status status-${d.status.toLowerCase()}`}>{DRAFT_STATUS[d.status] ?? d.status}</span>
+              {d.reviewFlags.includes('TEMA_SENSIVEL') && <span className="pill pill-danger">Tema sensível: revisão humana obrigatória</span>}
+              {d.reviewFlags.includes('FATOS_A_CONFERIR') && <span className="pill pill-warn">Fatos a conferir</span>}
+              <span className="muted spacer">gerado {timeAgo(d.createdAt)} · {d.model}</span>
             </div>
-
-            <h3>{d.title}</h3>
-            {d.subtitle && <p style={{ fontStyle: 'italic', color: 'var(--muted)' }}>{d.subtitle}</p>}
-            <div className="draft-body">
-              {d.body.split(/\n\s*\n/).map((p: string, i: number) => <p key={i}>{p}</p>)}
-            </div>
-
-            <p className="muted">
-              <strong>Categoria:</strong> {d.category ?? '—'} · <strong>Tags:</strong> {d.tags.join(', ') || '—'}
-            </p>
-            <p className="muted"><strong>SEO:</strong> {d.seoTitle ?? '—'} / {d.seoDescription ?? '—'}</p>
 
             {d.unsupported.length > 0 && (
-              <div className="alert alert-warn" style={{ margin: '0.75rem 0' }}>
+              <div className="alert alert-warn">
                 <strong>Não encontrado nas fontes: conferir</strong>
                 <ul>{d.unsupported.map((u: string, i: number) => <li key={i}>{u}</li>)}</ul>
               </div>
             )}
 
-            <div className="row" style={{ marginTop: '0.75rem' }}>
-              <CopyButton text={tudo} label="Copiar tudo" />
-              <CopyButton text={d.title} label="Título" />
-              <CopyButton text={d.subtitle ?? ''} label="Subtítulo" />
-              <CopyButton text={d.body} label="Texto" />
-              <CopyButton text={d.tags.join(', ')} label="Tags" />
-              <CopyButton text={`${d.seoTitle ?? ''}\n${d.seoDescription ?? ''}`} label="SEO" />
+            <h3 className="draft-title">{d.title}</h3>
+            {d.subtitle && <p className="draft-subtitle">{d.subtitle}</p>}
+            <div className="draft-body">
+              {d.body.split(/\n\s*\n/).map((p: string, i: number) => <p key={i}>{p}</p>)}
             </div>
 
-            <div className="row" style={{ marginTop: '0.75rem' }}>
+            <dl className="draft-extra">
+              <dt>Categoria</dt><dd>{d.category ?? '—'}</dd>
+              <dt>Tags</dt><dd>{d.tags.join(', ') || '—'}</dd>
+              <dt>SEO título</dt><dd>{d.seoTitle ?? '—'}</dd>
+              <dt>SEO descrição</dt><dd>{d.seoDescription ?? '—'}</dd>
+            </dl>
+
+            <div className="draft-actions">
+              <div className="row">
+                <span className="muted">Copiar:</span>
+                <CopyButton text={tudo} label="Tudo" primary />
+                <CopyButton text={d.title} label="Título" />
+                <CopyButton text={d.subtitle ?? ''} label="Subtítulo" />
+                <CopyButton text={d.body} label="Texto" />
+                <CopyButton text={d.tags.join(', ')} label="Tags" />
+                <CopyButton text={`${d.seoTitle ?? ''}\n${d.seoDescription ?? ''}`} label="SEO" />
+              </div>
               <form method="post" action="/api/pauta-status" className="row">
                 <input type="hidden" name="draftId" value={d.id} />
-                <button type="submit" name="status" value="PUBLICADA" className="primary">Marcar como publicada</button>
-                <button type="submit" name="status" value="IGNORADA" className="danger">Ignorar</button>
+                <button type="submit" name="status" value="PUBLICADA" className="success" disabled={d.status === 'PUBLICADA'}>Marcar como publicada</button>
+                <button type="submit" name="status" value="IGNORADA" className="danger" disabled={d.status === 'IGNORADA'}>Ignorar</button>
               </form>
             </div>
-
-            <details style={{ marginTop: '0.75rem' }}>
-              <summary>Fontes</summary>
-              <ul>
-                {(d.sources as any[]).map((s: any, i: number) => (
-                  <li key={i}><a href={s.url} target="_blank" rel="noreferrer">{s.title}</a> <span className="muted">({s.sourceKey})</span></li>
-                ))}
-              </ul>
-            </details>
           </article>
         );
       })}
 
-      <h2>Coberturas</h2>
-      {story.articles.map((a: any) => (
-        <div key={a.id} className="card" style={{ padding: '0.75rem 1rem' }}>
-          <a href={a.url} target="_blank" rel="noreferrer">{a.title}</a>
-          <div className="muted">
-            {a.sourceKey} · nota {a.score ?? '—'} ({a.priority ?? '—'}) · {(a.reasons ?? []).join('; ')}
-          </div>
-        </div>
-      ))}
+      <h2>Coberturas nos portais</h2>
+      <div className="list">
+        {story.articles.map((a: any) => (
+          <a key={a.id} href={a.url} target="_blank" rel="noreferrer" className="source">
+            <div className="source-head">
+              <strong>{SOURCE_LABEL[a.sourceKey] ?? a.sourceKey}</strong>
+              <span className="muted">{formatDateTime(a.publishedAt ?? a.detectedAt)}</span>
+              <span className="muted spacer">nota {a.score ?? '—'} · {PRIORITY_LABEL[a.priority] ?? '—'}</span>
+            </div>
+            <div className="source-title">{a.title} ↗</div>
+            {(a.reasons ?? []).length > 0 && <div className="muted">{a.reasons.join(' · ')}</div>}
+          </a>
+        ))}
+      </div>
 
       {ref && (
-        <section className="card" style={{ marginTop: '1.25rem', borderStyle: 'dashed' }}>
-          <h2 style={{ marginTop: 0 }}>Imagem de referência</h2>
-          <div className="alert alert-danger" style={{ margin: '0 0 0.75rem' }}><strong>{ref.notice}</strong></div>
+        <section className="card ref-card">
+          <h2>Imagem de referência</h2>
+          <div className="alert alert-danger"><strong>{ref.notice}</strong></div>
           <img className="ref" src={ref.url} alt="Referência do portal" />
-          <div className="muted" style={{ marginTop: '0.4rem' }}>Origem: {ref.origin} · {ref.credit}</div>
+          <div className="muted">Origem: {ref.origin} · {ref.credit}</div>
         </section>
       )}
     </>

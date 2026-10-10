@@ -1,12 +1,26 @@
 import Link from 'next/link';
 import { prisma } from '@/lib/db';
 import { currentUserId } from '@/lib/session';
+import AutoSelect from '@/components/AutoSelect';
+import AutoRefresh from '@/components/AutoRefresh';
+import { PRIORITIES, PRIORITY_LABEL, SOURCE_LABEL, formatDateTime, timeAgo } from '@/lib/ui';
 
-const PRIORITY_COLOR: Record<string, string> = {
-  URGENTE: '#b91c1c', ALTA: '#c2410c', NORMAL: '#4b5563', BAIXA: '#9ca3af',
+type Params = { prioridade?: string; fonte?: string; situacao?: string; busca?: string; ordem?: string };
+
+// Monta o link da própria página trocando um filtro e mantendo os outros.
+function hrefWith(params: Params, change: Partial<Params>) {
+  const merged: Record<string, string | undefined> = { ...params, busca: undefined, ...change };
+  const qs = new URLSearchParams();
+  for (const [k, v] of Object.entries(merged)) if (v) qs.set(k, v);
+  const s = qs.toString();
+  return s ? `/?${s}` : '/';
+}
+
+const STATUS_LABEL: Record<string, string> = {
+  GERADO: 'Rascunho pronto', PUBLICADA: 'Publicada', IGNORADA: 'Ignorada', SEM_RASCUNHO: 'Sem rascunho',
 };
 
-export default async function Home({ searchParams }: { searchParams: { prioridade?: string; fonte?: string; situacao?: string; busca?: string; ordem?: string } }) {
+export default async function Home({ searchParams }: { searchParams: Params }) {
   if (!currentUserId()) {
     return (
       <div className="alert alert-info">Sessão inválida. <Link href="/login">Entrar</Link></div>
@@ -36,106 +50,146 @@ export default async function Home({ searchParams }: { searchParams: { prioridad
     where: { action: 'collect_now', ...(lastDone ? { createdAt: { gt: lastDone.createdAt } } : {}) },
     select: { id: true },
   });
-  const lastDoneText = lastDone
-    ? lastDone.createdAt.toLocaleString('pt-BR', { timeZone: 'America/Campo_Grande', dateStyle: 'short', timeStyle: 'short' })
-    : null;
 
   // "relevantes": maior nota primeiro (urgentes no topo). "recentes": cobertura mais nova primeiro.
   const ordem = searchParams.ordem === 'recentes' ? 'recentes' : 'relevantes';
-  const stories = rows
-    .map((s: any) => {
-      const top = [...s.articles].sort((a: any, b: any) => (b.score ?? -1) - (a.score ?? -1))[0];
-      const latest = Math.max(...s.articles.map((a: any) => new Date(a.publishedAt ?? a.detectedAt).getTime()), 0);
-      return { ...s, top, topScore: top?.score ?? -1, latest };
-    })
+  const all = rows.map((s: any) => {
+    const top = [...s.articles].sort((a: any, b: any) => (b.score ?? -1) - (a.score ?? -1))[0];
+    const latest = Math.max(...s.articles.map((a: any) => new Date(a.publishedAt ?? a.detectedAt).getTime()), 0);
+    const status: string = s.drafts[0]?.status ?? 'SEM_RASCUNHO';
+    const sources: string[] = Array.from(new Set(s.articles.map((a: any) => a.sourceKey)));
+    return { ...s, top, topScore: top?.score ?? -1, priority: top?.priority ?? 'BAIXA', latest, status, sources };
+  });
+
+  // Resumo do topo (antes dos filtros).
+  const count = (p: (s: any) => boolean) => all.filter(p).length;
+  const summary = {
+    urgentes: count((s) => s.priority === 'URGENTE' && s.status === 'GERADO'),
+    revisar: count((s) => s.status === 'GERADO'),
+    publicadas: count((s) => s.status === 'PUBLICADA'),
+  };
+  const byPriority = Object.fromEntries(PRIORITIES.map((p) => [p, count((s) => s.priority === p)]));
+
+  const stories = all
     .sort((a: any, b: any) => (ordem === 'recentes' ? b.latest - a.latest : b.topScore - a.topScore))
-    .filter((s: any) => !searchParams.prioridade || s.top?.priority === searchParams.prioridade)
-    .filter((s: any) => !searchParams.fonte || s.articles.some((a: any) => a.sourceKey === searchParams.fonte))
-    .filter((s: any) => {
-      const st = s.drafts[0]?.status ?? 'SEM_RASCUNHO';
-      return !searchParams.situacao || st === searchParams.situacao;
-    })
+    .filter((s: any) => !searchParams.prioridade || s.priority === searchParams.prioridade)
+    .filter((s: any) => !searchParams.fonte || s.sources.includes(searchParams.fonte))
+    .filter((s: any) => !searchParams.situacao || s.status === searchParams.situacao)
     .slice(0, 50);
+
+  const hasFilters = !!(searchParams.prioridade || searchParams.fonte || searchParams.situacao);
 
   return (
     <>
-      <h1>Pautas</h1>
-      <p className="muted">
-        {ordem === 'recentes'
-          ? 'Mais recentes primeiro, de qualquer prioridade. Revise antes de publicar.'
-          : 'Ordenadas pela nota da matéria mais relevante. Revise antes de publicar.'}
-      </p>
+      <AutoRefresh active={!!pending} />
 
-      <form method="post" action="/api/collect-now" className="row" style={{ margin: '1rem 0' }}>
-        <button type="submit" className="primary" disabled={!!pending}>
-          {pending ? 'Buscando…' : 'Buscar notícias agora'}
-        </button>
-        <span className="muted">
-          {pending
-            ? 'A busca começa em até 15 segundos e leva alguns minutos. Atualize a página depois.'
-            : lastDoneText ? `Última busca: ${lastDoneText}` : 'Busca automática a cada 15 minutos.'}
-        </span>
-      </form>
+      <div className="page-head">
+        <div>
+          <h1>Pautas</h1>
+          <p className="muted">
+            {pending
+              ? 'Buscando nos portais… a lista atualiza sozinha.'
+              : lastDone ? `Última busca ${timeAgo(lastDone.createdAt)} · automática a cada 15 min` : 'Busca automática a cada 15 minutos.'}
+          </p>
+        </div>
+        <form method="post" action="/api/collect-now">
+          <button type="submit" className="primary" disabled={!!pending}>
+            {pending ? <><span className="spinner" /> Buscando…</> : 'Buscar notícias agora'}
+          </button>
+        </form>
+      </div>
+
       {searchParams.busca === 'aguarde' && (
         <div className="alert alert-warn">Uma busca foi pedida há menos de 3 minutos. Aguarde um pouco antes de pedir outra.</div>
       )}
 
-      <form method="get" className="row" style={{ margin: '1rem 0' }}>
-        <select name="ordem" defaultValue={ordem}>
-          <option value="relevantes">Urgentes primeiro</option>
-          <option value="recentes">Últimas notícias</option>
-        </select>
-        <select name="prioridade" defaultValue={searchParams.prioridade ?? ''}>
-          <option value="">Todas as prioridades</option>
-          <option value="URGENTE">Urgente</option>
-          <option value="ALTA">Alta</option>
-          <option value="NORMAL">Normal</option>
-          <option value="BAIXA">Baixa</option>
-        </select>
-        <select name="fonte" defaultValue={searchParams.fonte ?? ''}>
-          <option value="">Todos os portais</option>
-          <option value="campograndenews">Campo Grande News</option>
-          <option value="correiodoestado">Correio do Estado</option>
-          <option value="topmidia">TopMídia News</option>
-        </select>
-        <select name="situacao" defaultValue={searchParams.situacao ?? ''}>
-          <option value="">Qualquer situação</option>
-          <option value="GERADO">Rascunho gerado</option>
-          <option value="PUBLICADA">Publicada</option>
-          <option value="IGNORADA">Ignorada</option>
-          <option value="SEM_RASCUNHO">Sem rascunho</option>
-        </select>
-        <button type="submit">Filtrar</button>
-      </form>
+      <div className="stats">
+        <Link href={hrefWith({}, { prioridade: 'URGENTE', situacao: 'GERADO' })} className="stat stat-danger">
+          <strong>{summary.urgentes}</strong><span>urgentes para revisar</span>
+        </Link>
+        <Link href={hrefWith({}, { situacao: 'GERADO' })} className="stat">
+          <strong>{summary.revisar}</strong><span>rascunhos aguardando</span>
+        </Link>
+        <Link href={hrefWith({}, { situacao: 'PUBLICADA' })} className="stat stat-ok">
+          <strong>{summary.publicadas}</strong><span>publicadas</span>
+        </Link>
+      </div>
 
-      {stories.length === 0 && <p className="muted">Nenhuma pauta com esses filtros.</p>}
+      <div className="toolbar">
+        <div className="segmented" role="tablist">
+          <Link href={hrefWith(searchParams, { ordem: undefined })} className={ordem === 'relevantes' ? 'on' : ''}>Urgentes primeiro</Link>
+          <Link href={hrefWith(searchParams, { ordem: 'recentes' })} className={ordem === 'recentes' ? 'on' : ''}>Últimas notícias</Link>
+        </div>
 
-      {stories.map((s: any) => {
-        const draft = s.drafts[0];
-        const flags: string[] = draft?.reviewFlags ?? [];
-        return (
-          <Link key={s.id} href={`/pauta/${s.id}`} className="card">
-            <div className="row" style={{ marginBottom: '0.35rem' }}>
-              <span className="badge" style={{ background: PRIORITY_COLOR[s.top?.priority ?? 'BAIXA'] }}>
-                {s.top?.priority ?? 'BAIXA'} · {s.topScore}
-              </span>
-              <span className="muted">{s.articles.length} cobertura(s)</span>
-              {s.latest > 0 && (
-                <span className="muted">
-                  · {new Date(s.latest).toLocaleString('pt-BR', { timeZone: 'America/Campo_Grande', dateStyle: 'short', timeStyle: 'short' })}
-                </span>
-              )}
-              {s.alerts.length > 0 && <span className="flag flag-danger">divergência</span>}
-              {flags.includes('TEMA_SENSIVEL') && <span className="flag flag-danger">tema sensível</span>}
-              {flags.includes('FATOS_A_CONFERIR') && <span className="flag flag-warn">a conferir</span>}
-              {draft?.status && draft.status !== 'GERADO' && (
-                <span className="flag flag-ok spacer">{draft.status === 'PUBLICADA' ? 'publicada' : 'ignorada'}</span>
-              )}
-            </div>
-            <div style={{ fontWeight: 600 }}>{s.top?.title ?? s.title}</div>
+        <form method="get" className="toolbar-selects">
+          {searchParams.ordem && <input type="hidden" name="ordem" value={searchParams.ordem} />}
+          {searchParams.prioridade && <input type="hidden" name="prioridade" value={searchParams.prioridade} />}
+          <AutoSelect
+            name="fonte"
+            value={searchParams.fonte ?? ''}
+            options={[{ value: '', label: 'Todos os portais' }, ...Object.entries(SOURCE_LABEL).map(([value, label]) => ({ value, label }))]}
+          />
+          <AutoSelect
+            name="situacao"
+            value={searchParams.situacao ?? ''}
+            options={[{ value: '', label: 'Qualquer situação' }, ...Object.entries(STATUS_LABEL).map(([value, label]) => ({ value, label }))]}
+          />
+          <noscript><button type="submit">Filtrar</button></noscript>
+        </form>
+      </div>
+
+      <div className="chips">
+        <Link href={hrefWith(searchParams, { prioridade: undefined })} className={`chip ${!searchParams.prioridade ? 'on' : ''}`}>
+          Todas <span>{all.length}</span>
+        </Link>
+        {PRIORITIES.map((p) => (
+          <Link
+            key={p}
+            href={hrefWith(searchParams, { prioridade: searchParams.prioridade === p ? undefined : p })}
+            className={`chip chip-${p.toLowerCase()} ${searchParams.prioridade === p ? 'on' : ''}`}
+          >
+            {PRIORITY_LABEL[p]} <span>{byPriority[p]}</span>
           </Link>
-        );
-      })}
+        ))}
+        {hasFilters && <Link href={hrefWith({}, { ordem: searchParams.ordem })} className="clear">Limpar filtros</Link>}
+      </div>
+
+      {stories.length === 0 && (
+        <div className="empty">
+          <p>Nenhuma pauta com esses filtros.</p>
+          {hasFilters && <Link href={hrefWith({}, { ordem: searchParams.ordem })}>Limpar filtros</Link>}
+        </div>
+      )}
+
+      <div className="list">
+        {stories.map((s: any) => {
+          const flags: string[] = s.drafts[0]?.reviewFlags ?? [];
+          return (
+            <Link key={s.id} href={`/pauta/${s.id}`} className={`story story-${s.priority.toLowerCase()} ${s.status !== 'GERADO' && s.status !== 'SEM_RASCUNHO' ? 'story-done' : ''}`}>
+              <div className="story-score" title={`Nota ${s.topScore}`}>
+                <strong>{s.topScore >= 0 ? s.topScore : '—'}</strong>
+                <span>{PRIORITY_LABEL[s.priority] ?? s.priority}</span>
+              </div>
+              <div className="story-main">
+                <div className="story-title">{s.top?.title ?? s.title}</div>
+                <div className="story-meta">
+                  {s.latest > 0 && <span title={formatDateTime(s.latest)}>{timeAgo(s.latest)}</span>}
+                  <span>{s.sources.map((k: string) => SOURCE_LABEL[k] ?? k).join(' · ')}</span>
+                  {s.articles.length > 1 && <span>{s.articles.length} coberturas</span>}
+                </div>
+                {(s.alerts.length > 0 || flags.length > 0) && (
+                  <div className="story-flags">
+                    {s.alerts.length > 0 && <span className="pill pill-danger">Divergência entre portais</span>}
+                    {flags.includes('TEMA_SENSIVEL') && <span className="pill pill-danger">Tema sensível</span>}
+                    {flags.includes('FATOS_A_CONFERIR') && <span className="pill pill-warn">Fatos a conferir</span>}
+                  </div>
+                )}
+              </div>
+              <span className={`status status-${s.status.toLowerCase()}`}>{STATUS_LABEL[s.status] ?? s.status}</span>
+            </Link>
+          );
+        })}
+      </div>
     </>
   );
 }

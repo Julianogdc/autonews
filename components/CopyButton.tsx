@@ -1,15 +1,24 @@
 'use client';
 
+import { useState } from 'react';
+
 // Copia o texto da matéria para a área de transferência (a equipe cola no site).
-export default function CopyButton({ text, label }: { text: string; label: string }) {
+export default function CopyButton({ text, label, primary }: { text: string; label: string; primary?: boolean }) {
+  const [done, setDone] = useState(false);
+  const cls = [primary ? 'primary' : '', done ? 'copied' : ''].filter(Boolean).join(' ');
   return (
     <button
       type="button"
+      className={cls || undefined}
+      disabled={!text}
       onClick={() => {
-        navigator.clipboard?.writeText(text).catch(() => {});
+        navigator.clipboard?.writeText(text).then(() => {
+          setDone(true);
+          setTimeout(() => setDone(false), 1500);
+        }).catch(() => {});
       }}
     >
-      {label}
+      {done ? 'Copiado ✓' : label}
     </button>
   );
 }

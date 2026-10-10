@@ -5,19 +5,20 @@ export default async function LoginPage({
 }) {
   const params = await searchParams;
   return (
-    <main style={{ maxWidth: 360 }}>
+    <main className="login card">
       <h1>Entrar no Autonews</h1>
-      {params.erro && <p style={{ color: 'crimson' }}>E-mail ou senha inválidos.</p>}
-      <form method="post" action="/api/login">
+      <p className="muted">Radar de pautas e rascunhos da redação.</p>
+      {params.erro && <div className="alert alert-danger">E-mail ou senha inválidos.</div>}
+      <form method="post" action="/api/login" className="form">
         <label>
           E-mail
-          <input name="email" type="email" required style={{ display: 'block', width: '100%', marginBottom: 12 }} />
+          <input name="email" type="email" required autoComplete="email" autoFocus />
         </label>
         <label>
           Senha
-          <input name="password" type="password" required style={{ display: 'block', width: '100%', marginBottom: 12 }} />
+          <input name="password" type="password" required autoComplete="current-password" />
         </label>
-        <button type="submit">Entrar</button>
+        <button type="submit" className="primary">Entrar</button>
       </form>
     </main>
   );

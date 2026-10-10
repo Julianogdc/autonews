@@ -1,5 +1,6 @@
 import './globals.css';
 import Link from 'next/link';
+import NavLinks from '@/components/NavLinks';
 
 export const metadata = {
   title: 'Autonews',
@@ -11,11 +12,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="pt-BR">
       <body>
         <header className="topbar">
-          <Link href="/" className="brand">Autonews</Link>
-          <nav>
-            <Link href="/">Pautas</Link>
-            <Link href="/historico">Histórico</Link>
-          </nav>
+          <div className="topbar-inner">
+            <Link href="/" className="brand"><span className="brand-dot" />Autonews</Link>
+            <NavLinks />
+          </div>
         </header>
         <div className="container">{children}</div>
       </body>

@@ -9,11 +9,15 @@ import { processFacts } from '../lib/facts/apply';
 import * as cgn from '../lib/collectors/campograndenews';
 import * as correio from '../lib/collectors/correiodoestado';
 import * as topmidia from '../lib/collectors/topmidia';
+import * as agencia from '../lib/collectors/agenciabrasil';
+import * as band from '../lib/collectors/band';
 
 const SOURCES = [
   { key: 'campograndenews', list: cgn.listCandidates },
   { key: 'correiodoestado', list: correio.listCandidates },
   { key: 'topmidia', list: topmidia.listCandidates },
+  { key: 'agenciabrasil', list: agencia.listCandidates },
+  { key: 'band', list: band.listCandidates },
 ];
 
 const INTERVAL_MS = 15 * 60 * 1000;

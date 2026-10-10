@@ -18,6 +18,8 @@ const ORIGIN_NAMES: Record<string, string> = {
   campograndenews: 'Campo Grande News',
   correiodoestado: 'Correio do Estado',
   topmidia: 'TopMídia News',
+  agenciabrasil: 'Agência Brasil',
+  band: 'Band',
 };
 
 // Monta a referência a partir de uma matéria. Sem URL de imagem, não há referência.

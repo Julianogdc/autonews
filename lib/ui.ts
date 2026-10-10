@@ -4,6 +4,8 @@ export const SOURCE_LABEL: Record<string, string> = {
   campograndenews: 'Campo Grande News',
   correiodoestado: 'Correio do Estado',
   topmidia: 'TopMídia News',
+  agenciabrasil: 'Agência Brasil',
+  band: 'Band',
 };
 
 export const PRIORITIES = ['URGENTE', 'ALTA', 'NORMAL', 'BAIXA'] as const;

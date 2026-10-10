@@ -30,10 +30,11 @@ export default async function Chat({ searchParams }: { searchParams: { c?: strin
     }
   }
 
+  const models = await availableModels();
   return (
     <>
       <h1>Chat IA</h1>
-      <ChatIA conversations={conversations} models={availableModels()} initialId={initialId} initialMessages={initialMessages} />
+      <ChatIA conversations={conversations} models={models} initialId={initialId} initialMessages={initialMessages} />
     </>
   );
 }

@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
 
   if (!message) return NextResponse.json({ erro: 'mensagem vazia' }, { status: 400 });
   if (message.length > MAX_MSG) return NextResponse.json({ erro: `mensagem muito longa (máximo ${MAX_MSG} caracteres)` }, { status: 400 });
-  if (!availableModels().includes(model)) return NextResponse.json({ erro: 'modelo não permitido' }, { status: 400 });
+  if (!(await availableModels()).includes(model)) return NextResponse.json({ erro: 'modelo não permitido' }, { status: 400 });
 
   // Conversa existente só se for do próprio usuário; senão cria uma nova.
   const existing = body?.conversationId

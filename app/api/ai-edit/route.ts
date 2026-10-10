@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
 
   if (!text) return NextResponse.json({ erro: 'texto vazio' }, { status: 400 });
   if (text.length > MAX_CHARS) return NextResponse.json({ erro: `texto muito longo (máximo ${MAX_CHARS} caracteres)` }, { status: 400 });
-  if (!availableModels().includes(model)) return NextResponse.json({ erro: 'modelo não permitido' }, { status: 400 });
+  if (!(await availableModels()).includes(model)) return NextResponse.json({ erro: 'modelo não permitido' }, { status: 400 });
   if (!EDIT_MODES[mode]) return NextResponse.json({ erro: 'modo inválido' }, { status: 400 });
 
   try {

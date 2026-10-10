@@ -17,7 +17,8 @@ const SOURCES = [
   { key: 'correiodoestado', list: correio.listCandidates },
   { key: 'topmidia', list: topmidia.listCandidates },
   { key: 'agenciabrasil', list: agencia.listCandidates },
-  { key: 'band', list: band.listCandidates },
+  // Band desligada: o certificado HTTPS de band.uol.com.br está vencido. Religar quando for renovado.
+  // { key: 'band', list: band.listCandidates },
 ];
 
 const INTERVAL_MS = 15 * 60 * 1000;

@@ -1,9 +1,9 @@
 import { prisma } from '../db';
-import { buildPrompt, buildVerifyUser, isSensitive, parseDraft, parseVerify, VERIFY_SYSTEM, type SourceInput } from './prompt';
+import { availableModels } from '../ai/openai';
+import { askWithWeb } from '../ai/responses';
+import { buildPrompt, isSensitive, parseDraft, type SourceInput } from './prompt';
 
 const SOURCES_PER_STORY = 3;    // no máximo 3 coberturas por pauta
-const MODEL = process.env.AI_MODEL || 'gpt-4o-mini';
-const TIMEOUT_MS = 90000;
 
 type StoryRow = {
   id: string;
@@ -14,37 +14,16 @@ type StoryRow = {
   alerts: { detail: string }[];
 };
 
-async function callOpenAI(system: string, user: string): Promise<string> {
-  const key = process.env.AI_API_KEY;
-  if (!key) throw new Error('AI_API_KEY não configurada');
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
-  try {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      signal: ctrl.signal,
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
-      body: JSON.stringify({
-        model: MODEL,
-        temperature: 0.3,
-        response_format: { type: 'json_object' },
-        messages: [
-          { role: 'system', content: system },
-          { role: 'user', content: user },
-        ],
-      }),
-    });
-    if (!res.ok) throw new Error(`OpenAI respondeu ${res.status}`);
-    const json = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-    const content = json.choices?.[0]?.message?.content;
-    if (!content) throw new Error('OpenAI sem conteúdo');
-    return content;
-  } finally {
-    clearTimeout(timer);
-  }
+// Modelo da matéria: AI_DRAFT_MODEL no .env manda. Senão, o modelo médio mais novo da conta
+// (a matéria só é gerada quando alguém pede, então vale usar um modelo melhor que o mini).
+async function draftModel(): Promise<string> {
+  if (process.env.AI_DRAFT_MODEL) return process.env.AI_DRAFT_MODEL;
+  const models = await availableModels();
+  return models.find((m) => !/(mini|nano)/.test(m)) ?? models[0];
 }
 
 // Gera o rascunho de uma pauta. Só roda quando alguém pede no painel (botão "Gerar matéria").
+// Uma única chamada: a IA apura na web, escreve a matéria e devolve a checagem dos fatos.
 export async function generateDraftForStory(storyId: string): Promise<void> {
   const st: StoryRow | null = await prisma.story.findUnique({
     where: { id: storyId },
@@ -68,21 +47,25 @@ export async function generateDraftForStory(storyId: string): Promise<void> {
   const sources: SourceInput[] = st.articles.map((a) => ({
     sourceKey: a.sourceKey, title: a.title, url: a.url, text: a.text ?? '', facts: a.facts,
   }));
-  const prompt = buildPrompt({
-    sources,
-    divergences: st.alerts.map((a) => a.detail),
-    sensitive: isSensitive(sources.map((s) => `${s.title} ${s.text}`).join(' ')),
-  });
-  const draft = parseDraft(await callOpenAI(prompt.system, prompt.user));
-  // Conferência: afirmações que não aparecem nas fontes ficam registradas para revisão.
-  const unsupported = parseVerify(
-    await callOpenAI(VERIFY_SYSTEM, buildVerifyUser(draft, sources)),
-  );
+  const sensitive = isSensitive(sources.map((s) => `${s.title} ${s.text}`).join(' '));
+  const prompt = buildPrompt({ sources, divergences: st.alerts.map((a) => a.detail), sensitive });
 
+  const model = await draftModel();
+  const reply = await askWithWeb({ model, instructions: prompt.system, input: prompt.user });
+  const draft = parseDraft(reply.text);
+
+  // O que não ficou confirmado vira sugestão de checagem (a IA já apurou o resto).
+  const pending = draft.checks.filter((c) => c.status !== 'confirmado');
   const flags: string[] = [];
-  if (st.alerts.length) flags.push('DIVERGENCIA');
-  if (prompt.user.includes('Tema sensível')) flags.push('TEMA_SENSIVEL');
-  if (unsupported.length) flags.push('FATOS_A_CONFERIR');
+  if (st.alerts.length || draft.checks.some((c) => c.status === 'divergente')) flags.push('DIVERGENCIA');
+  if (sensitive) flags.push('TEMA_SENSIVEL');
+  if (pending.length) flags.push('FATOS_A_CONFERIR');
+
+  // Sites consultados: citados no texto da resposta e nos itens da checagem (sem repetir os portais).
+  const known = new Set(sources.map((s) => s.url));
+  const web = new Map<string, string>();
+  for (const s of reply.sources) if (!known.has(s.url)) web.set(s.url, s.title);
+  for (const c of draft.checks) for (const u of c.urls) if (!known.has(u) && !web.has(u)) web.set(u, u);
 
   await prisma.draft.create({
     data: {
@@ -96,8 +79,9 @@ export async function generateDraftForStory(storyId: string): Promise<void> {
       seoDescription: draft.seoDescription,
       sources: sources.map((s) => ({ sourceKey: s.sourceKey, title: s.title, url: s.url })),
       reviewFlags: flags,
-      unsupported,
-      model: MODEL,
+      unsupported: pending.map((c) => (c.note ? `${c.claim} (${c.note})` : c.claim)),
+      checks: { items: draft.checks, web: [...web].map(([url, title]) => ({ url, title })) },
+      model,
     },
   });
 }

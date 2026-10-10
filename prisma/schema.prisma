@@ -95,6 +95,7 @@ model Draft {
   sources         Json     // [{ sourceKey, title, url }]
   reviewFlags     String[] @default([]) // ex.: DIVERGENCIA, TEMA_SENSIVEL
   unsupported     String[] @default([]) // afirmações não encontradas nas fontes (conferência)
+  checks          Json?    // checagem com pesquisa na web: { items: [{ claim, status, note, urls }], web: [{ url, title }] }
   model           String
   status          String   @default("GERADO") // GERADO | PUBLICADA | IGNORADA
   createdAt       DateTime @default(now())

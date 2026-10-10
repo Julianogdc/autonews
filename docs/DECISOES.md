@@ -17,3 +17,10 @@ Registro das decisões tomadas durante a implantação. Cada item tem data e mot
 ## 2026-10-09 (depois)
 
 - **Backup só na VPS, sem cópia no Drive.** Decisão da equipe. Risco aceito: se a VPS tiver falha grave, o backup local vai junto. A pasta "Autonews Backups" no Drive ficou criada e vazia, e pode ser apagada. Rever esse ponto antes do go-live (Fase 10).
+
+## 2026-10-10
+
+- **Editor IA e Chat IA fora do menu.** A equipe usa o ChatGPT direto para revisões e pesquisas avulsas. O código continua no projeto.
+- **Rascunho com IA só sob demanda.** O coletor não gera mais rascunhos sozinho; a matéria é gerada pelo botão "Gerar matéria" em qualquer pauta. Motivo: economia, já que muitas pautas não eram aproveitadas.
+- **Redação com apuração na web.** Uma única chamada (API de Respostas da OpenAI com pesquisa na web) apura o fato em outros sites, escreve a matéria (6 a 10 parágrafos) e devolve a checagem de cada fato principal (confirmado, divergente ou não confirmado, com links). Modelo: `AI_DRAFT_MODEL` no `.env` ou, sem ele, o modelo médio mais novo da conta. Substitui o gpt-4o-mini em duas etapas, que gerava matérias curtas e alertas falsos.
+- **Checagem como sugestão.** O painel mostra só o que não ficou confirmado como "Sugestões de checagem". A revisão humana antes de publicar continua obrigatória.

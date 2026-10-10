@@ -4,6 +4,7 @@ import { currentUserId } from '@/lib/session';
 import { referenceImage } from '@/lib/images/reference';
 import CopyButton from '@/components/CopyButton';
 import GenerateButton from '@/components/GenerateButton';
+import Checks from '@/components/Checks';
 import AutoRefresh from '@/components/AutoRefresh';
 import { draftRequestState } from '@/lib/draft/request';
 import { PRIORITY_LABEL, SOURCE_LABEL, formatDateTime, timeAgo } from '@/lib/ui';
@@ -37,7 +38,7 @@ export default async function Pauta({ params }: { params: { id: string } }) {
   const topArticle = story.articles[0];
   const ref = topArticle ? referenceImage(topArticle) : null;
   const priority: string = topArticle?.priority ?? 'BAIXA';
-  const req = story.drafts.length === 0 ? await draftRequestState(story.id) : null;
+  const req = await draftRequestState(story.id);
 
   return (
     <>
@@ -59,27 +60,27 @@ export default async function Pauta({ params }: { params: { id: string } }) {
       )}
 
       <h2>Rascunho</h2>
-      {story.drafts.length === 0 && req && (
+      <AutoRefresh active={req.state === 'running'} interval={8000} />
+      {req.state === 'running' && (
         <div className="empty generate">
-          <AutoRefresh active={req.state === 'running'} interval={5000} />
-          {req.state === 'running' ? (
-            <>
-              <p><span className="spinner spinner-dark" /> <strong>Gerando a matéria com IA…</strong></p>
-              <p className="muted">Leva cerca de 1 minuto. A página atualiza sozinha.</p>
-            </>
-          ) : (
-            <>
-              {req.state === 'failed' && (
-                <div className="alert alert-danger">Não foi possível gerar: {req.error}</div>
-              )}
-              <p>Esta pauta ainda não tem matéria. A IA escreve um rascunho a partir das coberturas abaixo.</p>
-              <GenerateButton storyId={story.id} label={req.state === 'failed' ? 'Tentar de novo' : 'Gerar matéria'} />
-            </>
+          <p><span className="spinner spinner-dark" /> <strong>A IA está apurando na web e escrevendo a matéria…</strong></p>
+          <p className="muted">Leva de 1 a 3 minutos. A página atualiza sozinha.</p>
+        </div>
+      )}
+      {story.drafts.length > 0 && req.state === 'failed' && (
+        <div className="alert alert-danger">Não foi possível gerar a nova versão: {req.error}</div>
+      )}
+      {story.drafts.length === 0 && req.state !== 'running' && (
+        <div className="empty generate">
+          {req.state === 'failed' && (
+            <div className="alert alert-danger">Não foi possível gerar: {req.error}</div>
           )}
+          <p>Esta pauta ainda não tem matéria. A IA apura o fato na web e escreve um rascunho a partir das coberturas abaixo.</p>
+          <GenerateButton storyId={story.id} label={req.state === 'failed' ? 'Tentar de novo' : 'Gerar matéria'} />
         </div>
       )}
 
-      {story.drafts.map((d: any) => {
+      {story.drafts.map((d: any, i: number) => {
         const tudo = [
           d.title,
           d.subtitle ?? '',
@@ -92,13 +93,17 @@ export default async function Pauta({ params }: { params: { id: string } }) {
         return (
           <article key={d.id} className="card draft">
             <div className="draft-meta">
+              {i > 0 && <span className="pill">Versão anterior</span>}
               <span className={`status status-${d.status.toLowerCase()}`}>{DRAFT_STATUS[d.status] ?? d.status}</span>
               {d.reviewFlags.includes('TEMA_SENSIVEL') && <span className="pill pill-danger">Tema sensível: revisão humana obrigatória</span>}
-              {d.reviewFlags.includes('FATOS_A_CONFERIR') && <span className="pill pill-warn">Fatos a conferir</span>}
+              {d.reviewFlags.includes('FATOS_A_CONFERIR') && <span className="pill pill-warn">{d.checks ? 'Sugestões de checagem' : 'Fatos a conferir'}</span>}
               <span className="muted spacer">gerado {timeAgo(d.createdAt)} · {d.model}</span>
+              {i === 0 && req.state !== 'running' && <GenerateButton storyId={story.id} label="Gerar nova versão" regenerate />}
             </div>
 
-            {d.unsupported.length > 0 && (
+            {d.checks && <Checks checks={d.checks} />}
+
+            {!d.checks && d.unsupported.length > 0 && (
               <div className="alert alert-warn">
                 <strong>Não encontrado nas fontes: conferir</strong>
                 <ul>{d.unsupported.map((u: string, i: number) => <li key={i}>{u}</li>)}</ul>

@@ -54,7 +54,7 @@ Depois restaure dentro do banco de teste e confira os números. Só se a restaur
 ## Se algo parar
 
 - **O coletor parou de trazer matérias:** `docker logs autonews-worker --tail 30`. Se aparecer "0 candidatos" repetidamente, o layout do portal mudou; avisar o responsável técnico para ajustar o coletor daquele portal.
-- **Rascunhos não são gerados:** verificar se a chave da OpenAI ainda está válida e se há saldo na conta. Os logs mostram "AI_API_KEY não configurada" ou erro da OpenAI.
+- **"Gerar matéria" dá erro:** a mensagem aparece na própria pauta e no Histórico. Verificar se a chave da OpenAI ainda está válida e se há saldo na conta; detalhes em `docker logs autonews-web --tail 50`.
 - **Painel fora do ar:** `curl -s https://autonews.zafiramkt.com.br/api/health`. Se não responder, `docker restart autonews-web`.
 - **Reiniciar tudo:** `cd /opt/autonews/app && docker compose up -d` (não apaga dados).
 

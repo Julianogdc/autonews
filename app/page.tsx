@@ -181,7 +181,7 @@ export default async function Home({ searchParams }: { searchParams: Params }) {
                   <div className="story-flags">
                     {s.alerts.length > 0 && <span className="pill pill-danger">Divergência entre portais</span>}
                     {flags.includes('TEMA_SENSIVEL') && <span className="pill pill-danger">Tema sensível</span>}
-                    {flags.includes('FATOS_A_CONFERIR') && <span className="pill pill-warn">Fatos a conferir</span>}
+                    {flags.includes('FATOS_A_CONFERIR') && <span className="pill pill-warn">Sugestões de checagem</span>}
                   </div>
                 )}
               </div>

@@ -15,9 +15,10 @@ export async function POST(req: NextRequest) {
   if (!storyId) return new NextResponse(null, { status: 400 });
   const back = new NextResponse(null, { status: 303, headers: { Location: `/pauta/${storyId}` } });
 
-  // Já tem rascunho ou já está gerando: não gasta IA de novo.
+  // Já tem rascunho (sem pedido de nova versão) ou já está gerando: não gasta IA de novo.
+  const regenerate = form.get('regenerate') === '1';
   const hasDraft = await prisma.draft.findFirst({ where: { storyId }, select: { id: true } });
-  if (hasDraft) return back;
+  if (hasDraft && !regenerate) return back;
   if ((await draftRequestState(storyId)).state === 'running') return back;
 
   await prisma.auditLog.create({ data: { userId, action: 'draft_request', target: storyId } });

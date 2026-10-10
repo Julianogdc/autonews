@@ -13,3 +13,7 @@ Registro das decisões tomadas durante a implantação. Cada item tem data e mot
 - **Revisão humana obrigatória** para rascunhos marcados como "a conferir" ou "tema sensível", antes de qualquer publicação.
 - **Imagens dos portais só como referência.** Sempre marcadas como "não liberada". Crédito ausente aparece como "não informado pelo portal".
 - **Publicação continua manual.** O painel marca a pauta como publicada ou ignorada, mas não publica em nenhum site.
+
+## 2026-10-09 (depois)
+
+- **Backup só na VPS, sem cópia no Drive.** Decisão da equipe. Risco aceito: se a VPS tiver falha grave, o backup local vai junto. A pasta "Autonews Backups" no Drive ficou criada e vazia, e pode ser apagada. Rever esse ponto antes do go-live (Fase 10).

@@ -25,9 +25,10 @@ export async function POST(req: NextRequest) {
     const data = JSON.parse(raw) as { texto?: unknown; avisos?: unknown };
     const out = typeof data.texto === 'string' ? data.texto.trim() : '';
     if (!out) throw new Error('a IA não devolveu o texto');
-    const avisos = Array.isArray(data.avisos) ? data.avisos.filter((x): x is string => typeof x === 'string') : [];
+    let avisos = Array.isArray(data.avisos) ? data.avisos.filter((x): x is string => typeof x === 'string') : [];
+    // Se o texto voltou igual, os avisos da IA não são confiáveis: mostra só o resultado real.
     if (mode !== 'manchete' && out === text) {
-      avisos.unshift('A IA devolveu o texto sem nenhuma alteração. Confira o texto ou tente outro modelo.');
+      avisos = ['Nenhuma alteração feita: a IA não encontrou erros neste texto.'];
     }
 
     // Registra o uso sem guardar o texto (privacidade): só modelo, modo e tamanho.

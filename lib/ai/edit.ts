@@ -2,7 +2,7 @@
 export const EDIT_MODES: Record<string, { label: string; instruction: string }> = {
   corrigir: {
     label: 'Corrigir (ortografia, gramática e pontuação)',
-    instruction: 'Corrija ortografia, acentuação, gramática, pontuação e concordância em TODO o texto. Acrescente os acentos que faltam (ex.: "nao" vira "não", "esta" vira "está" quando for verbo). Não mude o sentido, nem reescreva frases que já estão corretas. Devolva o texto corrigido, nunca o original sem alteração. Em "avisos", liste cada correção feita (ex.: "nao → não").',
+    instruction: 'Corrija apenas erros reais de ortografia, acentuação, gramática, pontuação e concordância em TODO o texto (ex.: "nao" vira "não", "esta" vira "está" quando for verbo). Palavras já corretas não devem ser mudadas, mesmo que pareçam estranhas (ex.: "campus" é a forma correta em português). Não reescreva frases corretas e não mude o sentido. Se não houver erro algum, devolva o texto igual e deixe "avisos" vazio. Em "avisos", liste somente as correções que você de fato fez (ex.: "nao → não").',
   },
   revisar: {
     label: 'Revisar (clareza e estilo jornalístico)',

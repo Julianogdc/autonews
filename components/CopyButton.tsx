@@ -8,7 +8,6 @@ export default function CopyButton({ text, label }: { text: string; label: strin
       onClick={() => {
         navigator.clipboard?.writeText(text).catch(() => {});
       }}
-      style={{ padding: '0.4rem 0.8rem', cursor: 'pointer' }}
     >
       {label}
     </button>

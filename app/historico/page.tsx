@@ -5,7 +5,7 @@ import { currentUserId } from '@/lib/session';
 // Histórico básico: quem fez o quê e quando (logins e mudanças de status).
 export default async function Historico() {
   if (!currentUserId()) {
-    return <main><p>Sessão inválida. <Link href="/login">Entrar</Link></p></main>;
+    return <div className="alert alert-info">Sessão inválida. <Link href="/login">Entrar</Link></div>;
   }
 
   const logs: any[] = await prisma.auditLog.findMany({
@@ -17,26 +17,24 @@ export default async function Historico() {
   const names = new Map<string, string>(users.map((u) => [u.id, u.name]));
 
   return (
-    <main style={{ maxWidth: 900, margin: '0 auto' }}>
-      <p><Link href="/">← Pautas</Link></p>
+    <>
       <h1>Histórico</h1>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+      <p className="muted">Últimos 100 registros: entradas no painel e mudanças de status.</p>
+      <table>
         <thead>
-          <tr style={{ textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>
-            <th>Quando (Cuiabá)</th><th>Quem</th><th>Ação</th><th>Detalhe</th>
-          </tr>
+          <tr><th>Quando (Cuiabá)</th><th>Quem</th><th>Ação</th><th>Detalhe</th></tr>
         </thead>
         <tbody>
           {logs.map((l, i) => (
-            <tr key={i} style={{ borderBottom: '1px solid #f3f4f6' }}>
+            <tr key={i}>
               <td>{new Date(l.createdAt).toLocaleString('pt-BR', { timeZone: 'America/Cuiaba' })}</td>
               <td>{(l.userId && names.get(l.userId)) || '—'}</td>
               <td>{l.action === 'login' ? 'Entrou no painel' : l.action === 'draft_status' ? 'Mudou status' : l.action}</td>
-              <td>{l.details?.status ?? ''}</td>
+              <td>{l.details?.status === 'PUBLICADA' ? 'Publicada' : l.details?.status === 'IGNORADA' ? 'Ignorada' : ''}</td>
             </tr>
           ))}
         </tbody>
       </table>
-    </main>
+    </>
   );
 }

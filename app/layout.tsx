@@ -1,3 +1,6 @@
+import './globals.css';
+import Link from 'next/link';
+
 export const metadata = {
   title: 'Autonews',
   description: 'Radar jornalístico e assistente de redação — uso interno',
@@ -6,8 +9,15 @@ export const metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR">
-      <body style={{ fontFamily: 'system-ui, sans-serif', margin: 0, padding: '2rem' }}>
-        {children}
+      <body>
+        <header className="topbar">
+          <Link href="/" className="brand">Autonews</Link>
+          <nav>
+            <Link href="/">Pautas</Link>
+            <Link href="/historico">Histórico</Link>
+          </nav>
+        </header>
+        <div className="container">{children}</div>
       </body>
     </html>
   );

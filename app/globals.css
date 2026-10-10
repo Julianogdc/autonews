@@ -30,8 +30,8 @@ a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
 .topbar {
-  background: var(--card);
-  border-bottom: 1px solid var(--border);
+  background: linear-gradient(90deg, #0b1220, #1e293b);
+  border-bottom: 3px solid #f59e0b;
   padding: 0.7rem 1.25rem;
   display: flex;
   align-items: center;
@@ -40,11 +40,12 @@ a:hover { text-decoration: underline; }
   top: 0;
   z-index: 10;
 }
-.topbar .brand { font-weight: 700; color: var(--text); font-size: 1.05rem; }
+.topbar .brand { font-weight: 800; color: #fff; font-size: 1.1rem; letter-spacing: 0.02em; }
 .topbar .brand:hover { text-decoration: none; }
 .topbar nav { display: flex; gap: 1rem; }
-.topbar nav a { color: var(--muted); font-weight: 500; }
-.topbar nav a:hover { color: var(--text); text-decoration: none; }
+.topbar nav a { color: #cbd5e1; font-weight: 600; }
+.topbar nav a:hover { color: #f59e0b; text-decoration: none; }
+h1 { font-weight: 800; letter-spacing: -0.01em; }
 
 .container { max-width: 960px; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
 
@@ -58,8 +59,8 @@ a:hover { text-decoration: underline; }
   margin-bottom: 0.75rem;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
-a.card { display: block; color: inherit; }
-a.card:hover { border-color: #cbd5e1; text-decoration: none; }
+a.card { display: block; color: inherit; border-left: 4px solid #cbd5e1; }
+a.card:hover { border-color: #94a3b8; border-left-color: #f59e0b; text-decoration: none; transform: translateY(-1px); transition: transform 0.12s; }
 
 .row { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
 .spacer { margin-left: auto; }
@@ -95,7 +96,8 @@ button, .btn {
   color: var(--text);
 }
 button:hover, .btn:hover { border-color: #9ca3af; }
-button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.primary { background: #1d4ed8; border-color: #1d4ed8; color: #fff; }
+button:disabled { opacity: 0.55; cursor: not-allowed; }
 button.primary:hover { filter: brightness(1.05); }
 button.danger { color: var(--danger); }
 

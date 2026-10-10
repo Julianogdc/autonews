@@ -26,7 +26,7 @@ export async function askOpenAI(model: string, history: ChatTurn[], useWeb: bool
   if (useWeb) body.tools = [{ type: process.env.OPENAI_WEB_TOOL || 'web_search' }];
 
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 120000);
+  const timer = setTimeout(() => ctrl.abort(), 240000);
   try {
     const res = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
@@ -59,6 +59,11 @@ export async function askOpenAI(model: string, history: ChatTurn[], useWeb: bool
       }
     }
     return { text, sources };
+  } catch (e) {
+    if (e instanceof Error && (e.name === 'AbortError' || /aborted/i.test(e.message))) {
+      throw new Error('a IA demorou demais para responder (mais de 4 minutos). Tente de novo, ou desligue a pesquisa na web.');
+    }
+    throw e;
   } finally {
     clearTimeout(timer);
   }

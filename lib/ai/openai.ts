@@ -1,8 +1,9 @@
 // Chamada genérica à OpenAI (usada pelo editor e pelo chat).
 // Modelos: se AI_MODELS estiver no .env, ela manda. Senão, pergunta à própria OpenAI
 // quais modelos a chave acessa (cache de 1 hora). Se a pergunta falhar, usa a lista de reserva.
-const FALLBACK_MODELS = ['gpt-4.1', 'gpt-4.1-mini', 'gpt-4o', 'gpt-4o-mini'];
-const NOT_CHAT = /(audio|realtime|tts|transcribe|image|embedding|moderation|search|instruct|davinci|babbage|whisper|dall|computer-use|codex)/;
+// Modelos escolhidos: 1 de baixo custo e 2 de médio custo, rápidos e bons para texto e pesquisa.
+// Só aparecem se a conta tiver acesso a eles.
+const CURATED = ['gpt-4.1-mini', 'gpt-4.1', 'gpt-4o'];
 const CACHE_MS = 60 * 60 * 1000;
 let cache: { at: number; models: string[] } | null = null;
 
@@ -13,7 +14,7 @@ export async function availableModels(): Promise<string[]> {
   if (cache && Date.now() - cache.at < CACHE_MS) return cache.models;
 
   const key = process.env.AI_API_KEY;
-  if (!key) return FALLBACK_MODELS;
+  if (!key) return CURATED;
   try {
     const res = await fetch('https://api.openai.com/v1/models', {
       headers: { Authorization: `Bearer ${key}` },
@@ -21,15 +22,13 @@ export async function availableModels(): Promise<string[]> {
     });
     if (!res.ok) throw new Error(`status ${res.status}`);
     const json = (await res.json()) as { data?: { id: string }[] };
-    const models = (json.data ?? [])
-      .map((m) => m.id)
-      .filter((id) => /^(gpt-|o\d)/.test(id) && !NOT_CHAT.test(id))
-      .sort();
-    if (models.length === 0) throw new Error('lista vazia');
+    const ids = new Set((json.data ?? []).map((m) => m.id));
+    const models = CURATED.filter((m) => ids.has(m));
+    if (models.length === 0) throw new Error('nenhum modelo escolhido disponível na conta');
     cache = { at: Date.now(), models };
     return models;
   } catch {
-    return cache?.models ?? FALLBACK_MODELS;
+    return cache?.models ?? CURATED;
   }
 }
 

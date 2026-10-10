@@ -1,5 +1,5 @@
 // Chamada genérica à OpenAI (usada pelo editor). Os modelos disponíveis vêm da variável AI_MODELS.
-const DEFAULT_MODELS = 'gpt-4o-mini,gpt-4o';
+const DEFAULT_MODELS = 'gpt-4o-mini,gpt-4o,gpt-4.1-mini,gpt-4.1';
 
 export function availableModels(): string[] {
   const raw = process.env.AI_MODELS || DEFAULT_MODELS;

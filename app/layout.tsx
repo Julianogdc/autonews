@@ -14,6 +14,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Link href="/" className="brand">Autonews</Link>
           <nav>
             <Link href="/">Pautas</Link>
+            <Link href="/chat">Chat IA</Link>
             <Link href="/editor">Editor IA</Link>
             <Link href="/historico">Histórico</Link>
           </nav>

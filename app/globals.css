@@ -133,3 +133,7 @@ img.ref { max-width: 100%; border-radius: 8px; border: 1px solid var(--border); 
   .topbar { gap: 0.75rem; padding: 0.6rem 0.9rem; }
   .container { padding: 1rem 0.75rem 3rem; }
 }
+
+@media (max-width: 720px) {
+  .chat-grid { grid-template-columns: 1fr !important; }
+}

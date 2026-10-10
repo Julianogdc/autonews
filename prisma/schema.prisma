@@ -127,3 +127,28 @@ model Alert {
 
   @@index([storyId])
 }
+
+// Conversas do chat de IA (uso interno). Cada conversa pertence a um usuário.
+model Conversation {
+  id        String    @id @default(cuid())
+  userId    String
+  title     String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  messages  Message[]
+
+  @@index([userId])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           String       // user | assistant
+  content        String
+  model          String?
+  sources        Json?        // [{ url, title }] quando a resposta usou pesquisa na web
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId])
+}
